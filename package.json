@@ -1,0 +1,43 @@
+{
+  "name": "cc-fork",
+  "version": "0.0.1",
+  "description": "Create reusable Claude Code sessions with pre-loaded codebase context",
+  "main": "dist/index.js",
+  "bin": {
+    "cc-fork": "./dist/index.js",
+    "ccfork": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format esm",
+    "dev": "tsup src/index.ts --format esm --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest"
+  },
+  "keywords": [
+    "claude",
+    "claude code",
+    "cli",
+    "session"
+  ],
+  "author": "Qiushi Yan <qiushi.yan@gmail.com> (https://github.com/qiushiyan)",
+  "license": "MIT",
+  "packageManager": "pnpm@10.27.0",
+  "homepage": "https://github.com/qiushiyan/cc-fork",
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "devDependencies": {
+    "@changesets/cli": "^2.29.8",
+    "@types/node": "^25.0.10",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
+  },
+  "dependencies": {
+    "chalk": "^5.6.2",
+    "commander": "^14.0.2",
+    "gray-matter": "^4.0.3",
+    "ora": "^9.1.0"
+  }
+}
