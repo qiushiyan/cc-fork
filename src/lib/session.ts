@@ -42,9 +42,10 @@ export async function writeSession(
   basePath?: string
 ): Promise<void> {
   const path = getSessionPath(name, basePath);
-  // Ensure content starts with a newline for proper markdown formatting
-  const contentWithLeadingNewline = content.startsWith("\n") ? content : `\n${content}`;
-  const output = matter.stringify(contentWithLeadingNewline, frontmatter);
+  // gray-matter.stringify adds a newline after the closing ---, so strip any
+  // leading newline from content to avoid a double blank line.
+  const trimmedContent = content.startsWith("\n") ? content.slice(1) : content;
+  const output = matter.stringify(trimmedContent, frontmatter);
   await writeFile(path, output, "utf-8");
 }
 

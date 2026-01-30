@@ -1,7 +1,7 @@
 ---
-id: a0a33028-dbfc-456e-adb4-f6e3a4f06b73
+id: 3a5bda33-4f33-4e09-911b-7802df7e4d11
 created: '2026-01-30T00:43:57.056Z'
-updated: '2026-01-30T00:45:40.198Z'
+updated: '2026-01-30T00:49:31.742Z'
 ---
 
 You are working in a Node.js TypeScript CLI tool that helps users manage
