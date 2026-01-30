@@ -1,6 +1,6 @@
 # cc-fork
 
-![cc-fork workflow](https://raw.githubusercontent.com/qiushiyan/cc-fork/main/workflow.jpeg)
+![cc-fork workflow](./workflow.jpeg)
 
 Stop repeating yourself every time you start a new Claude Code session. cc-fork helps you Create manage Claude Code sessions with pre-loaded codebase context.
 
