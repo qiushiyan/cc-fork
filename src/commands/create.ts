@@ -13,7 +13,7 @@ import {
   createBaseSession,
   createBaseSessionInteractive,
 } from "../lib/claude.js";
-import { askQuestion, openEditor } from "../lib/prompt.js";
+import { askQuestion, openEditor, choose } from "../lib/prompt.js";
 import { getSessionPath } from "../lib/config.js";
 import { mergeFlags } from "../lib/flags.js";
 import type { ClaudeFlags } from "../types.js";
@@ -59,12 +59,48 @@ export async function create(
       process.exit(1);
     }
     if (session.frontmatter.id) {
-      console.error(
-        chalk.red(
-          `Session '${name}' already exists. Use 'cc-fork refresh ${name}' to recreate.`
-        )
+      if (!process.stdin.isTTY) {
+        console.error(
+          chalk.red(
+            `Session '${name}' already exists. Use 'cc-fork refresh ${name}' to recreate.`
+          )
+        );
+        process.exit(1);
+      }
+
+      const action = await choose(
+        chalk.yellow(`Session '${name}' already exists.`),
+        [
+          { label: "Refresh - re-run prompt for new session ID", value: "refresh" },
+          { label: "Edit - open session content in editor", value: "edit" },
+          { label: "Exit", value: "exit" },
+        ]
       );
-      process.exit(1);
+
+      if (action === "refresh") {
+        const { refresh } = await import("./refresh.js");
+        return refresh(name, cliFlags, { interactive: options.interactive });
+      }
+
+      if (action === "edit") {
+        try {
+          await openEditor(sessionPath);
+          console.log(chalk.dim("Editor closed."));
+          console.log(
+            chalk.dim(
+              `Run 'cc-fork refresh ${name}' to rebuild with updated content.`
+            )
+          );
+        } catch (err) {
+          console.error(chalk.red(`Failed to open editor: ${err}`));
+          process.exit(1);
+        }
+        return;
+      }
+
+      // exit (or invalid input)
+      console.log(chalk.dim("Aborted."));
+      return;
     }
   }
 

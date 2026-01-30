@@ -1,6 +1,10 @@
 # cc-fork
 
+![cc-fork workflow](./workflow.jpeg)
+
 Stop repeating yourself every time you start a new Claude Code session. cc-fork helps you Create manage Claude Code sessions with pre-loaded codebase context.
+
+
 
 ## The Problem
 
@@ -105,14 +109,14 @@ cc-fork fork payments      # Uses sonnet, skips permissions
 | Command | Description |
 |---------|-------------|
 | `cc-fork <name>` | Fork from a base session (default command) |
-| `cc-fork create [name]` | Create a new base session |
+| `cc-fork create [name]` | Create a new base session (alias: `new`) |
 | `cc-fork use <name>` | Resume base session to add more context |
 | `cc-fork refresh <name>` | Rebuild base session (use when session becomes stale) |
 | `cc-fork list` | List all sessions |
 | `cc-fork edit <name>` | Edit a session's prompt |
-| `cc-fork delete <name>` | Delete a session |
+| `cc-fork delete <names...>` | Delete one or more sessions |
 
-`rebuild` is an alias for `refresh`.
+`new` is an alias for `create`. `rebuild` is an alias for `refresh`.
 
 ### Interactive Mode
 

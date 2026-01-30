@@ -12,6 +12,7 @@ import { parseCliArgs } from "./lib/flags.js";
 // Default to 'fork' command if first arg isn't a known command
 const knownCommands = new Set([
   "create",
+  "new",
   "fork",
   "use",
   "refresh",
@@ -34,6 +35,7 @@ program
 
 program
   .command("create [name]")
+  .alias("new")
   .description("Create a new base session")
   .option("-i, --interactive", "Enter Claude Code after sending prompt")
   .allowUnknownOption()
@@ -93,8 +95,8 @@ program
   .action(list);
 
 program
-  .command("delete <name>")
-  .description("Delete a session file")
+  .command("delete <names...>")
+  .description("Delete one or more sessions")
   .option("-f, --force", "Skip confirmation")
   .action(del);
 

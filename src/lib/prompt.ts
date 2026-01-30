@@ -20,6 +20,32 @@ export async function confirm(message: string): Promise<boolean> {
   return answer.toLowerCase() === "y" || answer.toLowerCase() === "yes";
 }
 
+export interface Choice {
+  label: string;
+  value: string;
+}
+
+export async function choose(
+  message: string,
+  choices: Choice[]
+): Promise<string> {
+  console.log(message);
+  console.log();
+  for (let i = 0; i < choices.length; i++) {
+    console.log(`  ${i + 1}) ${choices[i]!.label}`);
+  }
+  console.log();
+
+  const answer = await askQuestion(`Choose an option (1-${choices.length}): `);
+  const index = parseInt(answer, 10) - 1;
+
+  if (isNaN(index) || index < 0 || index >= choices.length) {
+    return choices[choices.length - 1]!.value;
+  }
+
+  return choices[index]!.value;
+}
+
 export async function openEditor(filePath: string): Promise<void> {
   const editor = process.env.EDITOR || process.env.VISUAL || "vi";
 

@@ -42,7 +42,9 @@ export async function writeSession(
   basePath?: string
 ): Promise<void> {
   const path = getSessionPath(name, basePath);
-  const output = matter.stringify(content, frontmatter);
+  // Ensure content starts with a newline for proper markdown formatting
+  const contentWithLeadingNewline = content.startsWith("\n") ? content : `\n${content}`;
+  const output = matter.stringify(contentWithLeadingNewline, frontmatter);
   await writeFile(path, output, "utf-8");
 }
 

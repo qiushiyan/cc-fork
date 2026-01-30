@@ -10,33 +10,70 @@ interface DeleteOptions {
   force?: boolean;
 }
 
-export async function del(name: string, options: DeleteOptions): Promise<void> {
-  try {
-    validateSessionName(name);
-  } catch (err) {
-    console.error(chalk.red((err as Error).message));
-    process.exit(1);
+export async function del(
+  names: string[],
+  options: DeleteOptions
+): Promise<void> {
+  const validNames: string[] = [];
+  let hadErrors = false;
+
+  // Phase 1: Validate and check existence
+  for (const name of names) {
+    try {
+      validateSessionName(name);
+    } catch (err) {
+      console.error(chalk.red((err as Error).message));
+      hadErrors = true;
+      continue;
+    }
+
+    const exists = await sessionExists(name);
+    if (!exists) {
+      if (options.force) {
+        console.warn(chalk.yellow(`Session '${name}' not found, skipping.`));
+      } else {
+        console.error(chalk.red(`Session '${name}' not found.`));
+        hadErrors = true;
+      }
+      continue;
+    }
+
+    validNames.push(name);
   }
 
-  const exists = await sessionExists(name);
-  if (!exists) {
-    console.error(chalk.red(`Session '${name}' not found.`));
-    process.exit(1);
+  if (validNames.length === 0) {
+    if (hadErrors) {
+      process.exit(1);
+    }
+    return;
   }
 
+  // Phase 2: Confirm
   if (!options.force) {
-    const confirmed = await confirm(`Delete session '${name}'?`);
+    const sessionList = validNames.map((n) => `'${n}'`).join(", ");
+    const message =
+      validNames.length === 1
+        ? `Delete session ${sessionList}?`
+        : `Delete ${validNames.length} sessions: ${sessionList}?`;
+    const confirmed = await confirm(message);
     if (!confirmed) {
       console.log(chalk.dim("Aborted."));
       return;
     }
   }
 
-  try {
-    await deleteSession(name);
-    console.log(chalk.green(`Deleted session '${name}'`));
-  } catch (err) {
-    console.error(chalk.red(`Failed to delete session: ${err}`));
+  // Phase 3: Delete
+  for (const name of validNames) {
+    try {
+      await deleteSession(name);
+      console.log(chalk.green(`Deleted session '${name}'`));
+    } catch (err) {
+      console.error(chalk.red(`Failed to delete session '${name}': ${err}`));
+      hadErrors = true;
+    }
+  }
+
+  if (hadErrors) {
     process.exit(1);
   }
 }

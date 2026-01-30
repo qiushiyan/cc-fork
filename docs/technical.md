@@ -16,14 +16,14 @@ Libraries (src/lib/*.ts)
     ├── flags.ts     → parse/merge/convert flags
     ├── config.ts    → paths + project config
     ├── claude.ts    → spawn claude CLI
-    └── prompt.ts    → editor/readline
+    └── prompt.ts    → editor/readline/choose menu
 ```
 
 **CLI aliases:** `cc-fork` and `ccfork` (both point to the same binary).
 
 **Default command:** `fork` is the default command. Running `cc-fork <name>` is equivalent to `cc-fork fork <name>`. This is implemented by checking if the first argument is a known command; if not, `fork` is prepended to `process.argv`.
 
-**Command aliases:** `rebuild` is an alias for `refresh`.
+**Command aliases:** `new` is an alias for `create`. `rebuild` is an alias for `refresh`.
 
 **Key files:**
 
@@ -32,15 +32,17 @@ src/
 ├── index.ts              # Commander setup, arg parsing, default command logic
 ├── types.ts              # SessionFrontmatter, ClaudeFlags, ClaudeResponse
 ├── commands/
-│   ├── create.ts         # New base session (generates UUID)
+│   ├── create.ts         # New base session (generates UUID), conflict menu
 │   ├── fork.ts           # Branch from base (--fork-session)
 │   ├── use.ts            # Resume base directly (context accumulates)
-│   └── refresh.ts        # Rebuild base (new UUID, same prompt)
+│   ├── refresh.ts        # Rebuild base (new UUID, same prompt)
+│   └── delete.ts         # Delete sessions (supports multiple names)
 └── lib/
     ├── flags.ts          # extractFlags, mergeFlags, flagsToArgs, parseCliArgs
     ├── session.ts        # readSession, writeSession, listSessions
     ├── config.ts         # readProjectConfig, getSessionPath
-    └── claude.ts         # createBaseSession, createBaseSessionInteractive, forkSession, resumeSession
+    ├── claude.ts         # createBaseSession, createBaseSessionInteractive, forkSession, resumeSession
+    └── prompt.ts         # askQuestion, confirm, choose, openEditor
 ```
 
 ## Session Storage
@@ -101,11 +103,17 @@ Boolean `false` means "don't pass this flag" — useful for overriding a `true` 
 
 ### create
 
-1. Open editor for prompt
-2. Generate UUID
-3. Merge: `projectConfig + cliFlags`
-4. Spawn: `claude --session-id <uuid> -p <prompt> --output-format json ...flags`
-5. Write frontmatter with UUID + flags
+1. If session exists with an ID:
+   - **Non-TTY:** Error and exit (backward-compatible for scripts)
+   - **TTY:** Show numbered menu — Refresh / Edit / Exit
+     - Refresh delegates to the `refresh` command (dynamic import)
+     - Edit opens the session file in `$EDITOR`, then exits with a hint to run `refresh`
+     - Exit aborts
+2. Open editor for prompt
+3. Generate UUID
+4. Merge: `projectConfig + cliFlags`
+5. Spawn: `claude --session-id <uuid> -p <prompt> --output-format json ...flags`
+6. Write frontmatter with UUID + flags
 
 ### fork
 
@@ -132,6 +140,17 @@ Unlike fork, this resumes the base session directly. Context accumulates in the 
 5. Update frontmatter: new `id`, same `created`, new `updated`
 
 Rebuilds context from the original prompt. Use after major codebase changes. Supports CLI flag overrides (e.g., `--model haiku`).
+
+### delete
+
+1. Validate and check existence for each name
+   - Invalid names print error, continue to next
+   - Missing sessions: error without `--force`, yellow warning with `--force`
+2. Batch confirm all valid names (skipped with `--force`)
+3. Delete each valid session, print per-session success
+4. Exit 1 only if errors occurred (invalid names or failed deletes)
+
+Accepts variadic `<names...>` — `cc-fork delete a b c` deletes all three. Single-name usage is backward-compatible.
 
 ## Claude CLI Integration
 
@@ -162,7 +181,9 @@ When `create` or `refresh` is called with `-i`, they use `createBaseSessionInter
 
 **Three-level flags.** Enables team defaults (project config) with per-session overrides and CLI escape hatches. The merge is simple object spread—last write wins.
 
-**Fail-fast validation.** All commands validate inputs early and call `process.exit(1)` on errors. No exceptions bubble up.
+**Fail-fast validation.** All commands validate inputs early and call `process.exit(1)` on errors. No exceptions bubble up. `delete` is an exception: it validates all names first and continues past individual failures to process remaining sessions.
+
+**Interactive conflict resolution.** When `create` detects an existing session, it shows a numbered menu (via `choose()` in `prompt.ts`) instead of erroring. A non-TTY guard preserves the original error-and-exit behavior for scripts.
 
 ## Error Handling
 
