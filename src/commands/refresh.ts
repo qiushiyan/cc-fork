@@ -11,7 +11,7 @@ import {
   createBaseSession,
   createBaseSessionInteractive,
 } from "../lib/claude.js";
-import { getSessionPath, readProjectConfig } from "../lib/config.js";
+import { getSessionPath } from "../lib/config.js";
 import { extractFlags, mergeFlags } from "../lib/flags.js";
 import type { ClaudeFlags } from "../types.js";
 
@@ -59,18 +59,16 @@ export async function refresh(
     process.exit(1);
   }
 
-  const projectConfig = await readProjectConfig();
   const sessionFlags = extractFlags(session.frontmatter);
-  const effectiveFlags = mergeFlags(
-    mergeFlags(projectConfig, sessionFlags),
-    cliFlags
-  );
+  const effectiveFlags = mergeFlags(sessionFlags, cliFlags);
 
   const uuid = randomUUID();
   const now = new Date().toISOString();
   const startTime = Date.now();
 
-  if (options.interactive) {
+  const interactive = options.interactive ?? true;
+
+  if (interactive) {
     console.log(chalk.dim(`Entering Claude Code...`));
     try {
       await createBaseSessionInteractive(uuid, session.content, effectiveFlags);

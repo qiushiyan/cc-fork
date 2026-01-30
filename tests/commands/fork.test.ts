@@ -11,7 +11,6 @@ vi.mock("../../src/lib/claude.js", () => ({
 }));
 
 vi.mock("../../src/lib/config.js", () => ({
-  readProjectConfig: vi.fn(),
   getSessionPath: vi.fn(),
 }));
 
@@ -30,7 +29,7 @@ import {
   readSession,
 } from "../../src/lib/session.js";
 import { forkSession } from "../../src/lib/claude.js";
-import { getSessionPath, readProjectConfig } from "../../src/lib/config.js";
+import { getSessionPath } from "../../src/lib/config.js";
 
 describe("fork command - flag passthrough", () => {
   const mockExit = vi.spyOn(process, "exit").mockImplementation(() => {
@@ -64,7 +63,6 @@ describe("fork command - flag passthrough", () => {
       },
       content: "test prompt",
     });
-    vi.mocked(readProjectConfig).mockResolvedValue({});
 
     await fork("test-session", {});
 
@@ -85,56 +83,7 @@ describe("fork command - flag passthrough", () => {
     expect(mockExit).toHaveBeenCalledWith(1);
   });
 
-  it("passes flags from project config to claude", async () => {
-    vi.mocked(readSession).mockResolvedValue({
-      name: "test-session",
-      path: ".claude/cc-fork/test-session.md",
-      frontmatter: {
-        id: "test-uuid",
-        created: "2024-01-01",
-        updated: "2024-01-01",
-      },
-      content: "test prompt",
-    });
-    vi.mocked(readProjectConfig).mockResolvedValue({
-      model: "sonnet",
-      verbose: true,
-    });
-
-    await fork("test-session", {});
-
-    expect(forkSession).toHaveBeenCalledWith("test-uuid", "test-session", {
-      model: "sonnet",
-      verbose: true,
-    });
-  });
-
-  it("merges project config and session frontmatter (session wins)", async () => {
-    vi.mocked(readSession).mockResolvedValue({
-      name: "test-session",
-      path: ".claude/cc-fork/test-session.md",
-      frontmatter: {
-        id: "test-uuid",
-        created: "2024-01-01",
-        updated: "2024-01-01",
-        model: "haiku",
-      },
-      content: "test prompt",
-    });
-    vi.mocked(readProjectConfig).mockResolvedValue({
-      model: "sonnet",
-      verbose: true,
-    });
-
-    await fork("test-session", {});
-
-    expect(forkSession).toHaveBeenCalledWith("test-uuid", "test-session", {
-      model: "haiku",
-      verbose: true,
-    });
-  });
-
-  it("CLI flags override both session frontmatter and project config", async () => {
+  it("CLI flags override session frontmatter", async () => {
     vi.mocked(readSession).mockResolvedValue({
       name: "test-session",
       path: ".claude/cc-fork/test-session.md",
@@ -147,9 +96,6 @@ describe("fork command - flag passthrough", () => {
       },
       content: "test prompt",
     });
-    vi.mocked(readProjectConfig).mockResolvedValue({
-      verbose: true,
-    });
 
     await fork("test-session", {
       model: "opus",
@@ -159,7 +105,6 @@ describe("fork command - flag passthrough", () => {
     expect(forkSession).toHaveBeenCalledWith("test-uuid", "test-session", {
       model: "opus",
       "dangerously-skip-permissions": false,
-      verbose: true,
     });
   });
 
@@ -174,7 +119,6 @@ describe("fork command - flag passthrough", () => {
       },
       content: "test prompt",
     });
-    vi.mocked(readProjectConfig).mockResolvedValue({});
 
     await fork("test-session", {});
 
@@ -193,7 +137,6 @@ describe("fork command - flag passthrough", () => {
       },
       content: "test prompt",
     });
-    vi.mocked(readProjectConfig).mockResolvedValue({});
 
     await fork("test-session", {});
 

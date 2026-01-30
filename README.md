@@ -47,7 +47,15 @@ The core workflow for most users. Create a base session once with your codebase 
 # One-time setup: create a base session for a feature area
 cc-fork create payments
 # Opens your editor — write a prompt that guides Claude through relevant code
+```
 
+After your editor closes, you enter a Claude Code session where Claude processes your prompt. Once Claude finishes responding, you have three options:
+
+- **Satisfied?** Press `Ctrl+C` to exit. Your base session is saved and ready to fork.
+- **Want to add more context?** Keep prompting — ask Claude to read additional files or explain more patterns. Everything accumulates in the base session.
+- **Not happy with the response?** Exit, run `cc-fork edit payments` to revise your prompt, then `cc-fork refresh payments` to rebuild from scratch.
+
+```bash
 # Daily usage: fork when you need to work
 cc-fork payments
 # Launches Claude with full context, ready for your questions
@@ -64,7 +72,7 @@ Use a faster, cheaper model to build the initial context, then switch to a more 
 cc-fork create payments --model haiku
 
 # Fork with opus for complex reasoning tasks
-cc-fork fork payments --model opus
+cc-fork payments --model opus
 ```
 
 ### Incremental: Evolve Your Base Session
@@ -78,7 +86,7 @@ cc-fork use payments
 # Exit when done — the base session now includes this knowledge
 
 # Future forks will include the new context
-cc-fork fork payments
+cc-fork payments
 ```
 
 ### Maintenance: Keep Sessions Fresh
@@ -90,31 +98,30 @@ When your codebase changes significantly (major refactor, new architecture), ref
 cc-fork refresh payments
 ```
 
-### Team Defaults: Project-Wide Configuration
+### Project Configuration
 
-Set default flags for your entire project so team members don't need to remember them.
+Configure cc-fork's behavior per-project via `.claude/cc-fork/config.yaml`:
 
-```bash
-# Create project config with your team's preferences
-echo "model: sonnet
-dangerously-skip-permissions: true" > .claude/cc-fork/config.yaml
-
-# Now all commands use these defaults automatically
-cc-fork create auth        # Uses sonnet, skips permissions
-cc-fork fork payments      # Uses sonnet, skips permissions
+```yaml
+# .claude/cc-fork/config.yaml
+interactive: false      # disable interactive mode for create/refresh (default: true)
+defaultCommand: fork    # what `cc-fork <name>` runs (fork or use)
 ```
+
+For Claude Code settings (model, permissions, etc.), use [Claude Code's own settings files](https://code.claude.com/docs/en/settings) (`.claude/settings.json`).
 
 ## Claude CLI Flags
 
-Any `claude` CLI flag can be passed through to the underlying command. Flags are resolved from three levels (highest precedence first):
+Any `claude` CLI flag can be passed through to the underlying command. Flags are resolved from two levels (highest precedence first):
 
-1. **CLI arguments** — Override at runtime: `cc-fork fork payments --model opus`
+1. **CLI arguments** — Override at runtime: `cc-fork payments --model opus`
 2. **Session frontmatter** — Stored per-session in the markdown file's YAML header
-3. **Project config** — Defaults in `.claude/cc-fork/config.yaml`
 
 Flags passed during `create` are persisted in the session frontmatter. You can also edit them manually with `cc-fork edit <name>`.
 
-**Flag conversion:**
+For project-wide Claude defaults (model, permissions, etc.), use [Claude Code's own settings system](https://code.claude.com/docs/en/settings) (`.claude/settings.json`). cc-fork's `config.yaml` is reserved for cc-fork-specific behavior — see [Project Configuration](#project-configuration).
+
+**Flag conversion (session frontmatter):**
 
 | YAML | Claude CLI |
 |------|------------|
@@ -123,14 +130,7 @@ Flags passed during `create` are persisted in the session frontmatter. You can a
 | `dangerously-skip-permissions: false` | *(omitted)* |
 | `allowedTools: ["Bash(git *)", "Read"]` | `--allowedTools "Bash(git *)" "Read"` |
 
-Boolean `false` means "don't pass this flag" — useful for overriding a project-level `true`.
-
-**Project config example** (`.claude/cc-fork/config.yaml`):
-
-```yaml
-model: sonnet
-dangerously-skip-permissions: true
-```
+Boolean `false` means "don't pass this flag" — useful for overriding a session-level `true` from the CLI.
 
 ## CLI Reference
 
@@ -145,23 +145,25 @@ cc-fork create [name] [options] [-- claude-flags...]
 | Option | Description |
 |--------|-------------|
 | `-p, --prompt <text>` | Provide prompt inline, skipping the editor |
-| `-i, --interactive` | Enter Claude Code directly after sending the prompt |
+| `-i, --interactive` | Enter Claude Code after sending the prompt (default: `true`) |
 
 Without `-p`, opens `$EDITOR` (falls back to `$VISUAL`, then `vi`) to write the session prompt. With `-p`, the prompt is written directly and the editor is skipped.
 
-Without `-i`, a spinner is shown while Claude processes the prompt. With `-i`, you enter Claude Code and can interact in real-time.
+By default, you enter Claude Code and can interact in real-time. Set `interactive: false` in `config.yaml` to use a spinner instead.
 
-If the session already exists with an ID, an interactive menu offers to refresh, edit, or exit.
+If the session already exists with an ID, an interactive menu offers to refresh, edit, delete, or exit.
 
 ### `fork` (default command)
 
 Fork from a base session for daily work. This is the default command — `cc-fork payments` is equivalent to `cc-fork fork payments`.
 
 ```
-cc-fork fork <name> [-- claude-flags...]
+cc-fork <name> [-- claude-flags...]
 ```
 
 Creates an isolated working session branched from the base. The base session is unchanged.
+
+The default command can be changed to `use` via `defaultCommand: use` in `config.yaml`.
 
 ### `use`
 
@@ -183,7 +185,7 @@ cc-fork refresh <name> [options] [-- claude-flags...]
 
 | Option | Description |
 |--------|-------------|
-| `-i, --interactive` | Enter Claude Code directly after sending the prompt |
+| `-i, --interactive` | Enter Claude Code after sending the prompt (default: `true`) |
 
 Use after major codebase changes to rebuild Claude's understanding from scratch. The prompt content is preserved; only the session ID is regenerated.
 

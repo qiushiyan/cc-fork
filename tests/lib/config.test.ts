@@ -16,51 +16,40 @@ describe("readProjectConfig", () => {
     vi.clearAllMocks();
   });
 
-  it("parses YAML config with string values", async () => {
-    vi.mocked(readFile).mockResolvedValue("model: haiku\n");
+  it("parses interactive option", async () => {
+    vi.mocked(readFile).mockResolvedValue("interactive: true\n");
 
     const config = await readProjectConfig("/test");
 
-    expect(config).toEqual({ model: "haiku" });
+    expect(config).toEqual({ interactive: true });
   });
 
-  it("parses YAML config with boolean values", async () => {
+  it("parses defaultCommand option", async () => {
+    vi.mocked(readFile).mockResolvedValue("defaultCommand: use\n");
+
+    const config = await readProjectConfig("/test");
+
+    expect(config).toEqual({ defaultCommand: "use" });
+  });
+
+  it("parses both options together", async () => {
     vi.mocked(readFile).mockResolvedValue(
-      "dangerously-skip-permissions: true\nverbose: false\n"
+      "interactive: true\ndefaultCommand: use\n"
     );
 
     const config = await readProjectConfig("/test");
 
-    expect(config).toEqual({
-      "dangerously-skip-permissions": true,
-      verbose: false,
-    });
+    expect(config).toEqual({ interactive: true, defaultCommand: "use" });
   });
 
-  it("parses YAML config with array values", async () => {
+  it("ignores unknown keys", async () => {
     vi.mocked(readFile).mockResolvedValue(
-      'allowedTools:\n  - "Bash(git *)"\n  - Read\n'
+      "model: haiku\ninteractive: true\ndangerously-skip-permissions: true\n"
     );
 
     const config = await readProjectConfig("/test");
 
-    expect(config).toEqual({
-      allowedTools: ["Bash(git *)", "Read"],
-    });
-  });
-
-  it("parses YAML config with mixed values", async () => {
-    vi.mocked(readFile).mockResolvedValue(
-      'model: sonnet\ndangerously-skip-permissions: true\nallowedTools:\n  - "Bash(git *)"\n'
-    );
-
-    const config = await readProjectConfig("/test");
-
-    expect(config).toEqual({
-      model: "sonnet",
-      "dangerously-skip-permissions": true,
-      allowedTools: ["Bash(git *)"],
-    });
+    expect(config).toEqual({ interactive: true });
   });
 
   it("returns empty object if config file does not exist", async () => {

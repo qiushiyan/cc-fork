@@ -1,6 +1,6 @@
 {
   "name": "cc-fork",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Create reusable Claude Code sessions with pre-loaded codebase context",
   "main": "dist/index.js",
   "bin": {

@@ -1,11 +1,12 @@
 import chalk from "chalk";
 import ora from "ora";
 import { randomUUID } from "node:crypto";
-import { ensureConfigDir, readProjectConfig } from "../lib/config.js";
+import { ensureConfigDir } from "../lib/config.js";
 import {
   readSession,
   writeSession,
   sessionExists,
+  deleteSession,
   getDefaultTemplate,
   validateSessionName,
 } from "../lib/session.js";
@@ -15,7 +16,6 @@ import {
 } from "../lib/claude.js";
 import { askQuestion, openEditor, choose } from "../lib/prompt.js";
 import { getSessionPath } from "../lib/config.js";
-import { mergeFlags } from "../lib/flags.js";
 import type { ClaudeFlags } from "../types.js";
 
 export interface CreateOptions {
@@ -74,6 +74,7 @@ export async function create(
         [
           { label: "Refresh - re-run prompt for new session ID", value: "refresh" },
           { label: "Edit - open session content in editor", value: "edit" },
+          { label: "Delete - remove session and start over", value: "delete" },
           { label: "Exit", value: "exit" },
         ]
       );
@@ -96,6 +97,12 @@ export async function create(
           console.error(chalk.red(`Failed to open editor: ${err}`));
           process.exit(1);
         }
+        return;
+      }
+
+      if (action === "delete") {
+        await deleteSession(name);
+        console.log(chalk.green(`Deleted session '${name}'`));
         return;
       }
 
@@ -149,13 +156,14 @@ export async function create(
   }
 
   const uuid = randomUUID();
-  const projectConfig = await readProjectConfig();
-  const effectiveFlags = mergeFlags(projectConfig, cliFlags);
+  const effectiveFlags = cliFlags;
   const now = new Date().toISOString();
 
   const startTime = Date.now();
 
-  if (options.interactive) {
+  const interactive = options.interactive ?? true;
+
+  if (interactive) {
     console.log(chalk.dim(`Entering Claude Code...`));
     try {
       await createBaseSessionInteractive(uuid, sessionContent, effectiveFlags);

@@ -10,12 +10,12 @@ vi.mock("../../src/lib/session.js", () => ({
 
 vi.mock("../../src/lib/claude.js", () => ({
   createBaseSession: vi.fn(),
+  createBaseSessionInteractive: vi.fn(),
 }));
 
 vi.mock("../../src/lib/config.js", () => ({
   ensureConfigDir: vi.fn(),
   getSessionPath: vi.fn(),
-  readProjectConfig: vi.fn(),
 }));
 
 vi.mock("../../src/lib/prompt.js", () => ({
@@ -38,11 +38,13 @@ import {
   writeSession,
   getDefaultTemplate,
 } from "../../src/lib/session.js";
-import { createBaseSession } from "../../src/lib/claude.js";
+import {
+  createBaseSession,
+  createBaseSessionInteractive,
+} from "../../src/lib/claude.js";
 import {
   ensureConfigDir,
   getSessionPath,
-  readProjectConfig,
 } from "../../src/lib/config.js";
 import { openEditor } from "../../src/lib/prompt.js";
 
@@ -72,21 +74,20 @@ describe("create command - flag passthrough", () => {
       session_id: "new-uuid",
       result: "Session created",
     });
+    vi.mocked(createBaseSessionInteractive).mockResolvedValue();
   });
 
   afterEach(() => {
     vi.clearAllMocks();
   });
 
-  it("passes CLI flags to createBaseSession", async () => {
-    vi.mocked(readProjectConfig).mockResolvedValue({});
-
+  it("passes CLI flags to createBaseSessionInteractive (default mode)", async () => {
     await create("test-session", {
       model: "haiku",
       "dangerously-skip-permissions": true,
     });
 
-    expect(createBaseSession).toHaveBeenCalledWith(
+    expect(createBaseSessionInteractive).toHaveBeenCalledWith(
       expect.any(String),
       "test prompt content",
       {
@@ -97,8 +98,6 @@ describe("create command - flag passthrough", () => {
   });
 
   it("stores CLI flags in frontmatter", async () => {
-    vi.mocked(readProjectConfig).mockResolvedValue({});
-
     await create("test-session", {
       model: "haiku",
       "dangerously-skip-permissions": true,
@@ -114,65 +113,22 @@ describe("create command - flag passthrough", () => {
     );
   });
 
-  it("merges project config with CLI flags (CLI wins)", async () => {
-    vi.mocked(readProjectConfig).mockResolvedValue({
-      model: "sonnet",
-      verbose: true,
-    });
-
+  it("uses CLI flags directly without project config merge", async () => {
     await create("test-session", {
       model: "haiku",
     });
 
-    expect(createBaseSession).toHaveBeenCalledWith(
+    // Only CLI flags are passed — no project config involved
+    expect(createBaseSessionInteractive).toHaveBeenCalledWith(
       expect.any(String),
       "test prompt content",
       {
         model: "haiku",
-        verbose: true,
       }
-    );
-
-    expect(writeSession).toHaveBeenCalledWith(
-      "test-session",
-      expect.objectContaining({
-        model: "haiku",
-        verbose: true,
-      }),
-      "test prompt content"
-    );
-  });
-
-  it("uses project config when no CLI flags provided", async () => {
-    vi.mocked(readProjectConfig).mockResolvedValue({
-      model: "sonnet",
-      "dangerously-skip-permissions": true,
-    });
-
-    await create("test-session", {});
-
-    expect(createBaseSession).toHaveBeenCalledWith(
-      expect.any(String),
-      "test prompt content",
-      {
-        model: "sonnet",
-        "dangerously-skip-permissions": true,
-      }
-    );
-
-    expect(writeSession).toHaveBeenCalledWith(
-      "test-session",
-      expect.objectContaining({
-        model: "sonnet",
-        "dangerously-skip-permissions": true,
-      }),
-      "test prompt content"
     );
   });
 
   it("stores reserved fields correctly alongside flags", async () => {
-    vi.mocked(readProjectConfig).mockResolvedValue({});
-
     await create("test-session", { model: "haiku" });
 
     expect(writeSession).toHaveBeenCalledWith(
@@ -185,5 +141,26 @@ describe("create command - flag passthrough", () => {
       }),
       "test prompt content"
     );
+  });
+
+  it("uses inline prompt when -p is provided", async () => {
+    await create("test-session", {}, { prompt: "inline prompt text" });
+
+    expect(createBaseSessionInteractive).toHaveBeenCalledWith(
+      expect.any(String),
+      "inline prompt text",
+      {}
+    );
+  });
+
+  it("uses non-interactive mode when interactive is explicitly false", async () => {
+    await create("test-session", { model: "haiku" }, { interactive: false });
+
+    expect(createBaseSession).toHaveBeenCalledWith(
+      expect.any(String),
+      "test prompt content",
+      { model: "haiku" }
+    );
+    expect(createBaseSessionInteractive).not.toHaveBeenCalled();
   });
 });

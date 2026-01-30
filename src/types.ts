@@ -24,3 +24,8 @@ export interface ClaudeResponse {
   result?: string;
   cost_usd?: number;
 }
+
+export interface CcForkConfig {
+  interactive?: boolean;
+  defaultCommand?: "fork" | "use";
+}

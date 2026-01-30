@@ -1,10 +1,11 @@
 import { mkdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import matter from "gray-matter";
-import type { ClaudeFlags } from "../types.js";
+import type { CcForkConfig } from "../types.js";
 
 const CONFIG_DIR_NAME = ".claude/cc-fork";
 const CONFIG_FILE_NAME = "config.yaml";
+const KNOWN_CONFIG_KEYS = new Set(["interactive", "defaultCommand"]);
 
 export function getConfigDir(basePath?: string): string {
   return join(basePath ?? process.cwd(), CONFIG_DIR_NAME);
@@ -27,12 +28,18 @@ export function getProjectConfigPath(basePath?: string): string {
 /** Read project config or return {} when missing. */
 export async function readProjectConfig(
   basePath?: string
-): Promise<ClaudeFlags> {
+): Promise<CcForkConfig> {
   const configPath = getProjectConfigPath(basePath);
   try {
     const content = await readFile(configPath, "utf-8");
     const parsed = matter(`---\n${content}\n---`);
-    return parsed.data as ClaudeFlags;
+    const config: CcForkConfig = {};
+    for (const [key, value] of Object.entries(parsed.data)) {
+      if (KNOWN_CONFIG_KEYS.has(key)) {
+        (config as Record<string, unknown>)[key] = value;
+      }
+    }
+    return config;
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === "ENOENT") {
       return {};

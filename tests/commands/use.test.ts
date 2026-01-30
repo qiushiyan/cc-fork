@@ -11,7 +11,6 @@ vi.mock("../../src/lib/claude.js", () => ({
 }));
 
 vi.mock("../../src/lib/config.js", () => ({
-  readProjectConfig: vi.fn().mockResolvedValue({}),
   getSessionPath: vi.fn(),
 }));
 

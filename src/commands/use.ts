@@ -5,7 +5,7 @@ import {
   validateSessionName,
 } from "../lib/session.js";
 import { resumeSession, type SessionError } from "../lib/claude.js";
-import { getSessionPath, readProjectConfig } from "../lib/config.js";
+import { getSessionPath } from "../lib/config.js";
 import { extractFlags, mergeFlags } from "../lib/flags.js";
 import type { ClaudeFlags } from "../types.js";
 
@@ -52,12 +52,8 @@ export async function use(
     process.exit(1);
   }
 
-  const projectConfig = await readProjectConfig();
   const sessionFlags = extractFlags(session.frontmatter);
-  const effectiveFlags = mergeFlags(
-    mergeFlags(projectConfig, sessionFlags),
-    cliFlags
-  );
+  const effectiveFlags = mergeFlags(sessionFlags, cliFlags);
 
   console.log(chalk.dim(`Resuming base session '${name}'...`));
 
