@@ -1,6 +1,6 @@
 {
   "name": "cc-fork",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Create reusable Claude Code sessions with pre-loaded codebase context",
   "main": "dist/index.js",
   "bin": {
@@ -24,7 +24,8 @@
   "packageManager": "pnpm@10.27.0",
   "homepage": "https://github.com/qiushiyan/cc-fork",
   "files": [
-    "dist"
+    "dist",
+    "README.md"
   ],
   "type": "module",
   "devDependencies": {
