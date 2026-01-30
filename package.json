@@ -1,6 +1,6 @@
 {
   "name": "cc-fork",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Create reusable Claude Code sessions with pre-loaded codebase context",
   "main": "dist/index.js",
   "bin": {
@@ -8,8 +8,8 @@
     "ccfork": "./dist/index.js"
   },
   "scripts": {
-    "build": "tsup src/index.ts --format esm",
-    "dev": "tsup src/index.ts --format esm --watch",
+    "build": "tsup",
+    "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
     "test": "vitest"
   },

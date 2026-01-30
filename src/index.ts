@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+declare const PKG_VERSION: string;
 import { program, type Command } from "commander";
 import { create } from "./commands/create.js";
 import { fork } from "./commands/fork.js";
@@ -31,7 +32,7 @@ if (firstArg && !firstArg.startsWith("-") && !knownCommands.has(firstArg)) {
 program
   .name("cc-fork")
   .description("Claude Code kickstart session manager")
-  .version("0.1.0");
+  .version(PKG_VERSION, "-v, --version");
 
 program
   .command("create [name]")

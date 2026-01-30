@@ -21,6 +21,11 @@ export async function edit(name: string): Promise<void> {
   try {
     await openEditor(sessionPath);
     console.log(chalk.dim("Editor closed."));
+    console.log(
+      chalk.dim(
+        `Run 'cc-fork refresh ${name}' to rebuild with updated content.`
+      )
+    );
   } catch (err) {
     console.error(chalk.red(`Failed to open editor: ${err}`));
     process.exit(1);
