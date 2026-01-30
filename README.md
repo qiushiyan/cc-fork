@@ -104,28 +104,118 @@ cc-fork create auth        # Uses sonnet, skips permissions
 cc-fork fork payments      # Uses sonnet, skips permissions
 ```
 
-## Commands
+## Claude CLI Flags
 
-| Command | Description |
-|---------|-------------|
-| `cc-fork <name>` | Fork from a base session (default command) |
-| `cc-fork create [name]` | Create a new base session (alias: `new`) |
-| `cc-fork use <name>` | Resume base session to add more context |
-| `cc-fork refresh <name>` | Rebuild base session (use when session becomes stale) |
-| `cc-fork list` | List all sessions |
-| `cc-fork edit <name>` | Edit a session's prompt |
-| `cc-fork delete <names...>` | Delete one or more sessions |
+Any `claude` CLI flag can be passed through to the underlying command. Flags are resolved from three levels (highest precedence first):
 
-`new` is an alias for `create`. `rebuild` is an alias for `refresh`.
+1. **CLI arguments** — Override at runtime: `cc-fork fork payments --model opus`
+2. **Session frontmatter** — Stored per-session in the markdown file's YAML header
+3. **Project config** — Defaults in `.claude/cc-fork/config.yaml`
 
-### Interactive Mode
+Flags passed during `create` are persisted in the session frontmatter. You can also edit them manually with `cc-fork edit <name>`.
 
-By default, `create` and `refresh` show a spinner while waiting for Claude. Use `-i` to enter Claude Code directly after sending the prompt:
+**Flag conversion:**
 
-```bash
-cc-fork create payments -i    # Enter Claude Code after prompt is sent
-cc-fork refresh payments -i   # Same for refresh
+| YAML | Claude CLI |
+|------|------------|
+| `model: haiku` | `--model haiku` |
+| `dangerously-skip-permissions: true` | `--dangerously-skip-permissions` |
+| `dangerously-skip-permissions: false` | *(omitted)* |
+| `allowedTools: ["Bash(git *)", "Read"]` | `--allowedTools "Bash(git *)" "Read"` |
+
+Boolean `false` means "don't pass this flag" — useful for overriding a project-level `true`.
+
+**Project config example** (`.claude/cc-fork/config.yaml`):
+
+```yaml
+model: sonnet
+dangerously-skip-permissions: true
 ```
+
+## CLI Reference
+
+### `create` (alias: `new`)
+
+Create a new base session.
+
+```
+cc-fork create [name] [options] [-- claude-flags...]
+```
+
+| Option | Description |
+|--------|-------------|
+| `-p, --prompt <text>` | Provide prompt inline, skipping the editor |
+| `-i, --interactive` | Enter Claude Code directly after sending the prompt |
+
+Without `-p`, opens `$EDITOR` (falls back to `$VISUAL`, then `vi`) to write the session prompt. With `-p`, the prompt is written directly and the editor is skipped.
+
+Without `-i`, a spinner is shown while Claude processes the prompt. With `-i`, you enter Claude Code and can interact in real-time.
+
+If the session already exists with an ID, an interactive menu offers to refresh, edit, or exit.
+
+### `fork` (default command)
+
+Fork from a base session for daily work. This is the default command — `cc-fork payments` is equivalent to `cc-fork fork payments`.
+
+```
+cc-fork fork <name> [-- claude-flags...]
+```
+
+Creates an isolated working session branched from the base. The base session is unchanged.
+
+### `use`
+
+Resume a base session directly to add more context.
+
+```
+cc-fork use <name> [-- claude-flags...]
+```
+
+Unlike `fork`, context accumulates in the base session. Future forks inherit the added context.
+
+### `refresh` (alias: `rebuild`)
+
+Rebuild a base session with a new session ID using the current prompt.
+
+```
+cc-fork refresh <name> [options] [-- claude-flags...]
+```
+
+| Option | Description |
+|--------|-------------|
+| `-i, --interactive` | Enter Claude Code directly after sending the prompt |
+
+Use after major codebase changes to rebuild Claude's understanding from scratch. The prompt content is preserved; only the session ID is regenerated.
+
+### `list`
+
+List all sessions with name, dates, and status.
+
+```
+cc-fork list
+```
+
+### `edit`
+
+Open a session file in `$EDITOR` for manual editing.
+
+```
+cc-fork edit <name>
+```
+
+Run `cc-fork refresh <name>` afterward to rebuild with updated content.
+
+### `delete`
+
+Delete one or more sessions.
+
+```
+cc-fork delete <names...> [options]
+```
+
+| Option | Description |
+|--------|-------------|
+| `-f, --force` | Skip confirmation prompt |
 
 ## How It Works
 
@@ -141,66 +231,6 @@ Sessions are stored as markdown files in `.claude/cc-fork/`. Each file contains 
 When you `create`, Claude runs your prompt and saves the session ID. When you `fork`, Claude resumes from that session with `--fork-session`, giving you a fresh working session with all the context intact. When you `use`, Claude resumes the base session directly, allowing you to incrementally add context without reprocessing the original prompt.
 
 It is recommended to commit the `.claude/cc-fork/` directory to version control so your team can share and evolve base sessions together.
-
-## Claude CLI Flags
-
-Any Claude CLI flag can be passed through to the underlying `claude` command. Flags can be set at three levels (in order of precedence):
-
-1. **CLI arguments** (highest) - Override flags at runtime
-2. **Session frontmatter** - Stored per-session in the markdown file
-3. **Project config** (lowest) - Default flags in `.claude/cc-fork/config.yaml`
-
-### Passing Flags via CLI
-
-```bash
-# Create a session with a specific model
-cc-fork create payments --model haiku --dangerously-skip-permissions
-
-# Fork with a different model (overrides stored settings)
-cc-fork fork payments --model opus
-
-# Refresh with a different model (one-time override)
-cc-fork refresh payments --model haiku
-
-# Override boolean flags
-cc-fork fork payments --dangerously-skip-permissions false
-```
-
-### Session Frontmatter
-
-Flags passed during `create` are stored in the session's YAML frontmatter:
-
-```yaml
----
-id: abc-123
-created: '2024-01-01T00:00:00.000Z'
-updated: '2024-01-01T00:00:00.000Z'
-model: haiku
-dangerously-skip-permissions: true
----
-Your kickstart prompt here...
-```
-
-You can also manually edit the frontmatter with `cc-fork edit <name>`.
-
-### Project Config
-
-Create `.claude/cc-fork/config.yaml` under the active project directory to set default flags for all sessions:
-
-```yaml
-# .claude/cc-fork/config.yaml
-model: sonnet
-dangerously-skip-permissions: true
-```
-
-### Flag Conversion
-
-| YAML | Claude CLI |
-|------|------------|
-| `model: haiku` | `--model haiku` |
-| `dangerously-skip-permissions: true` | `--dangerously-skip-permissions` |
-| `dangerously-skip-permissions: false` | (omitted) |
-| `allowedTools: ["Bash(git *)", "Read"]` | `--allowedTools "Bash(git *)" "Read"` |
 
 ## License
 

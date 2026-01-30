@@ -32,7 +32,7 @@ src/
 ├── index.ts              # Commander setup, arg parsing, default command logic
 ├── types.ts              # SessionFrontmatter, ClaudeFlags, ClaudeResponse
 ├── commands/
-│   ├── create.ts         # New base session (generates UUID), conflict menu
+│   ├── create.ts         # New base session (generates UUID), -p inline prompt, conflict menu
 │   ├── fork.ts           # Branch from base (--fork-session)
 │   ├── use.ts            # Resume base directly (context accumulates)
 │   ├── refresh.ts        # Rebuild base (new UUID, same prompt)
@@ -109,7 +109,9 @@ Boolean `false` means "don't pass this flag" — useful for overriding a `true` 
      - Refresh delegates to the `refresh` command (dynamic import)
      - Edit opens the session file in `$EDITOR`, then exits with a hint to run `refresh`
      - Exit aborts
-2. Open editor for prompt
+2. Get prompt content:
+   - **With `-p`:** Use the inline prompt directly, write to session file, skip editor
+   - **Without `-p`:** Write template, open `$EDITOR`, read back, validate non-empty
 3. Generate UUID
 4. Merge: `projectConfig + cliFlags`
 5. Spawn: `claude --session-id <uuid> -p <prompt> --output-format json ...flags`

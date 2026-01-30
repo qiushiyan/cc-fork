@@ -20,6 +20,7 @@ import type { ClaudeFlags } from "../types.js";
 
 export interface CreateOptions {
   interactive?: boolean;
+  prompt?: string;
 }
 
 export async function create(
@@ -104,29 +105,47 @@ export async function create(
     }
   }
 
-  if (!exists) {
-    const template = getDefaultTemplate(name);
-    await writeSession(name, {}, template);
-    console.log(chalk.dim(`Created ${sessionPath}`));
-  }
+  let sessionContent: string;
 
-  console.log(chalk.dim("Opening editor... Save and close when done."));
-  await openEditor(sessionPath);
+  if (options.prompt) {
+    // Inline prompt: write directly, skip editor
+    await writeSession(name, {}, options.prompt);
+    sessionContent = options.prompt;
+  } else {
+    // Editor flow
+    if (!exists) {
+      const template = getDefaultTemplate(name);
+      await writeSession(name, {}, template);
+      console.log(chalk.dim(`Created ${sessionPath}`));
+    }
 
-  let session;
-  try {
-    session = await readSession(name);
-  } catch (err) {
-    console.error(
-      chalk.red(
-        `Failed to read session '${name}'. The file may be corrupted. Fix or delete: ${sessionPath}`
-      )
-    );
-    process.exit(1);
-  }
-  if (!session.content.trim()) {
-    console.error(chalk.red("Session file is empty. Aborting."));
-    process.exit(1);
+    console.log(chalk.dim("Opening editor... Save and close when done."));
+    try {
+      await openEditor(sessionPath);
+    } catch (err) {
+      console.error(chalk.red(`Failed to open editor: ${err}`));
+      console.error(
+        chalk.dim(`You can edit the file manually at: ${sessionPath}`)
+      );
+      process.exit(1);
+    }
+
+    let session;
+    try {
+      session = await readSession(name);
+    } catch (err) {
+      console.error(
+        chalk.red(
+          `Failed to read session '${name}'. The file may be corrupted. Fix or delete: ${sessionPath}`
+        )
+      );
+      process.exit(1);
+    }
+    if (!session.content.trim()) {
+      console.error(chalk.red("Session file is empty. Aborting."));
+      process.exit(1);
+    }
+    sessionContent = session.content;
   }
 
   const uuid = randomUUID();
@@ -139,7 +158,7 @@ export async function create(
   if (options.interactive) {
     console.log(chalk.dim(`Entering Claude Code...`));
     try {
-      await createBaseSessionInteractive(uuid, session.content, effectiveFlags);
+      await createBaseSessionInteractive(uuid, sessionContent, effectiveFlags);
       const duration = ((Date.now() - startTime) / 1000).toFixed(1);
       await writeSession(
         name,
@@ -149,7 +168,7 @@ export async function create(
           updated: now,
           ...effectiveFlags,
         },
-        session.content
+        sessionContent
       );
       console.log(chalk.green(`\nCreated base session '${name}'`));
       console.log(chalk.dim(`Session ID: ${uuid}`));
@@ -163,7 +182,7 @@ export async function create(
     try {
       const response = await createBaseSession(
         uuid,
-        session.content,
+        sessionContent,
         effectiveFlags
       );
       const duration = ((Date.now() - startTime) / 1000).toFixed(1);
@@ -175,7 +194,7 @@ export async function create(
           updated: now,
           ...effectiveFlags,
         },
-        session.content
+        sessionContent
       );
       spinner.succeed(`Created base session '${name}'`);
       console.log(chalk.dim(`Session ID: ${uuid}`));

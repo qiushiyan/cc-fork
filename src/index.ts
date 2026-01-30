@@ -39,17 +39,21 @@ program
   .alias("new")
   .description("Create a new base session")
   .option("-i, --interactive", "Enter Claude Code after sending prompt")
+  .option("-p, --prompt <text>", "Provide prompt inline (skip editor)")
   .allowUnknownOption()
   .allowExcessArguments()
   .action(
     (
       name: string | undefined,
-      options: { interactive?: boolean },
+      options: { interactive?: boolean; prompt?: string },
       command: Command
     ) => {
       const rawArgs = command.args.slice(name ? 1 : 0);
       const cliFlags = parseCliArgs(rawArgs);
-      return create(name, cliFlags, { interactive: options.interactive });
+      return create(name, cliFlags, {
+        interactive: options.interactive,
+        prompt: options.prompt,
+      });
     }
   );
 
