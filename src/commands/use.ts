@@ -7,6 +7,7 @@ import {
 import { resumeSession, type SessionError } from "../lib/claude.js";
 import { getSessionPath } from "../lib/config.js";
 import { extractFlags, mergeFlags } from "../lib/flags.js";
+import { readUserSession, computePromptHash } from "../lib/user-storage.js";
 import type { ClaudeFlags } from "../types.js";
 
 export async function use(
@@ -43,7 +44,10 @@ export async function use(
     );
     process.exit(1);
   }
-  if (!session.frontmatter.id) {
+
+  // Read session ID from user storage
+  const userData = await readUserSession(name);
+  if (!userData?.id) {
     console.error(
       chalk.red(
         `Session '${name}' has no base session. Run 'cc-fork create ${name}' first.`
@@ -52,13 +56,25 @@ export async function use(
     process.exit(1);
   }
 
+  // Check for stale prompt (content changed since last refresh)
+  if (userData.promptHash) {
+    const currentHash = computePromptHash(session.content);
+    if (currentHash !== userData.promptHash) {
+      console.log(
+        chalk.yellow(
+          `Warning: Prompt content has changed since last refresh. Consider running 'cc-fork refresh ${name}'.`
+        )
+      );
+    }
+  }
+
   const sessionFlags = extractFlags(session.frontmatter);
   const effectiveFlags = mergeFlags(sessionFlags, cliFlags);
 
   console.log(chalk.dim(`Resuming base session '${name}'...`));
 
   try {
-    await resumeSession(session.frontmatter.id, name, effectiveFlags);
+    await resumeSession(userData.id, name, effectiveFlags);
     console.log();
     console.log(chalk.green(`Exited base session '${name}'`));
   } catch (err) {

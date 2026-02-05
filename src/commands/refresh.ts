@@ -13,6 +13,11 @@ import {
 } from "../lib/claude.js";
 import { getSessionPath } from "../lib/config.js";
 import { extractFlags, mergeFlags } from "../lib/flags.js";
+import {
+  readUserSession,
+  writeUserSession,
+  computePromptHash,
+} from "../lib/user-storage.js";
 import type { ClaudeFlags } from "../types.js";
 
 export interface RefreshOptions {
@@ -62,6 +67,9 @@ export async function refresh(
   const sessionFlags = extractFlags(session.frontmatter);
   const effectiveFlags = mergeFlags(sessionFlags, cliFlags);
 
+  // Read existing user session data to preserve created timestamp
+  const existingData = await readUserSession(name);
+
   const uuid = randomUUID();
   const now = new Date().toISOString();
   const startTime = Date.now();
@@ -73,16 +81,15 @@ export async function refresh(
     try {
       await createBaseSessionInteractive(uuid, session.content, effectiveFlags);
       const duration = ((Date.now() - startTime) / 1000).toFixed(1);
-      await writeSession(
-        name,
-        {
-          id: uuid,
-          created: session.frontmatter.created || now,
-          updated: now,
-          ...sessionFlags,
-        },
-        session.content
-      );
+      // Write only flags to frontmatter (no id/timestamps)
+      await writeSession(name, sessionFlags, session.content);
+      // Write session metadata to user storage
+      await writeUserSession(name, {
+        id: uuid,
+        created: existingData?.created || now,
+        updated: now,
+        promptHash: computePromptHash(session.content),
+      });
       console.log(chalk.green(`\nRefreshed base session '${name}'`));
       console.log(chalk.dim(`New session ID: ${uuid}`));
       console.log(chalk.dim(`Duration: ${duration}s`));
@@ -99,16 +106,15 @@ export async function refresh(
         effectiveFlags
       );
       const duration = ((Date.now() - startTime) / 1000).toFixed(1);
-      await writeSession(
-        name,
-        {
-          id: uuid,
-          created: session.frontmatter.created || now,
-          updated: now,
-          ...sessionFlags,
-        },
-        session.content
-      );
+      // Write only flags to frontmatter (no id/timestamps)
+      await writeSession(name, sessionFlags, session.content);
+      // Write session metadata to user storage
+      await writeUserSession(name, {
+        id: uuid,
+        created: existingData?.created || now,
+        updated: now,
+        promptHash: computePromptHash(session.content),
+      });
       spinner.succeed(`Refreshed base session '${name}'`);
       console.log(chalk.dim(`New session ID: ${uuid}`));
       console.log(chalk.dim(`Duration: ${duration}s`));

@@ -1,8 +1,6 @@
 # Technical Overview
 
-CLI tool for managing Claude Code kickstart sessions. Wraps the `claude` CLI with session persistence and per-session Claude flag configuration.
-
-**Core abstraction:** Sessions are markdown files with YAML frontmatter. The frontmatter stores a Claude session UUID plus Claude CLI flags. Commands read/merge/pass these flags to `claude`. Project-level configuration (`config.yaml`) controls cc-fork's own behavior, not Claude flags.
+Internal documentation for cc-fork developers. For user documentation, see [README.md](../README.md).
 
 ## Architecture
 
@@ -12,237 +10,149 @@ CLI Entry (commander)
 Commands (src/commands/*.ts)
     ↓
 Libraries (src/lib/*.ts)
-    ├── session.ts   → gray-matter I/O
-    ├── flags.ts     → parse/merge/convert flags
-    ├── config.ts    → paths + project config
-    ├── claude.ts    → spawn claude CLI
-    └── prompt.ts    → editor/readline/choose menu
+    ├── session.ts      → gray-matter I/O for prompts
+    ├── user-storage.ts → user-level session metadata
+    ├── git.ts          → git remote detection
+    ├── flags.ts        → parse/merge/convert flags
+    ├── config.ts       → paths + project config
+    ├── claude.ts       → spawn claude CLI
+    └── prompt.ts       → editor/readline/choose menu
 ```
-
-**CLI aliases:** `cc-fork` and `ccfork` (both point to the same binary).
-
-**Default command:** `fork` is the default command (configurable via `defaultCommand` in `config.yaml`). Running `cc-fork <name>` is equivalent to `cc-fork fork <name>`. This is implemented by reading the project config, then checking if the first argument is a known command; if not, the configured default command is prepended to `process.argv`.
-
-**Command aliases:** `new` is an alias for `create`. `rebuild` is an alias for `refresh`.
 
 **Key files:**
 
 ```
 src/
-├── index.ts              # Commander setup, arg parsing, default command logic
-├── types.ts              # SessionFrontmatter, ClaudeFlags, ClaudeResponse, CcForkConfig
+├── index.ts              # Commander setup, default command injection
+├── types.ts              # TypeScript interfaces
 ├── commands/
-│   ├── create.ts         # New base session (generates UUID), -p inline prompt, conflict menu
-│   ├── fork.ts           # Branch from base (--fork-session)
-│   ├── use.ts            # Resume base directly (context accumulates)
-│   ├── refresh.ts        # Rebuild base (new UUID, same prompt)
-│   └── delete.ts         # Delete sessions (supports multiple names)
+│   ├── create.ts         # New base session
+│   ├── fork.ts           # Branch from base
+│   ├── use.ts            # Resume base directly
+│   ├── refresh.ts        # Rebuild with new UUID
+│   └── delete.ts         # Delete sessions
 └── lib/
-    ├── flags.ts          # extractFlags, mergeFlags, flagsToArgs, parseCliArgs
+    ├── flags.ts          # extractFlags, mergeFlags, flagsToArgs
     ├── session.ts        # readSession, writeSession, listSessions
-    ├── config.ts         # readProjectConfig (CcForkConfig), getSessionPath
-    ├── claude.ts         # createBaseSession, createBaseSessionInteractive, forkSession, resumeSession
-    └── prompt.ts         # askQuestion, confirm, choose, openEditor
+    ├── user-storage.ts   # readUserSession, writeUserSession, getProjectId
+    ├── git.ts            # getGitRemoteOrigin, normalizeGitUrl
+    ├── config.ts         # readProjectConfig, getSessionPath
+    ├── claude.ts         # Claude CLI spawn functions
+    └── prompt.ts         # User interaction utilities
 ```
 
-## Session Storage
+## Storage Model
 
-Sessions live in `.claude/cc-fork/` as markdown with YAML frontmatter:
+### Prompt Files (`.claude/cc-fork/*.md`)
+
+Markdown with YAML frontmatter. Contains only Claude CLI flags—no session state.
 
 ```yaml
 ---
-id: 550e8400-e29b-41d4-a716-446655440000
-created: 2024-01-27T18:28:00.000Z
-updated: 2024-01-27T18:28:00.000Z
 model: haiku
-dangerously-skip-permissions: true
 ---
-# Payments Module
-
-Read these files to understand the payment flow...
+# Prompt content here
 ```
 
-**Reserved keys** (`id`, `created`, `updated`) are managed by cc-fork. Everything else in session frontmatter passes through to `claude` as CLI flags.
+Parsed with `gray-matter`. Reserved keys (`id`, `created`, `updated`) are filtered out by `extractFlags()` to prevent passing them as CLI flags.
 
-Gray-matter handles parsing. For project config (`config.yaml`), we wrap the content with `---` delimiters since it's pure YAML, not markdown.
+### User Storage (`~/.cc-fork/<project-id>/*.json`)
 
-## Project Config
+Local session metadata, never committed:
 
-`config.yaml` stores cc-fork-specific settings, **not** Claude CLI flags. Only known keys are extracted; unknown keys are silently ignored.
-
-```yaml
-# .claude/cc-fork/config.yaml
-interactive: false      # override default (true) for create/refresh
-defaultCommand: use     # what `cc-fork <name>` runs (fork or use)
+```json
+{
+  "id": "550e8400-...",
+  "created": "2024-01-27T18:28:00.000Z",
+  "updated": "2024-01-27T18:28:00.000Z",
+  "promptHash": "abc123def456"
+}
 ```
 
-| Key | Type | Default | Description |
-|-----|------|---------|-------------|
-| `interactive` | boolean | `true` | Interactive mode for `create` and `refresh` |
-| `defaultCommand` | `"fork"` \| `"use"` | `"fork"` | Command used when running `cc-fork <name>` |
+**Error handling:** Corrupted JSON returns `null` with a warning (doesn't crash).
 
-`readProjectConfig()` returns a `CcForkConfig` object. The config is read once at startup in `index.ts` and passed to command handlers.
+### Project ID Derivation
 
-For Claude CLI defaults (model, permissions, etc.), users should configure Claude Code's own settings system (`.claude/settings.json`).
+Priority order in `getProjectId()`:
 
-## Claude Flag System
+1. `config.yaml` → `projectId` (sanitized for path safety)
+2. Git remote origin → `<repo-name>-<hash>`
+3. Absolute path → `<dirname>-<hash>`
 
-Two levels of Claude CLI flag configuration, merged with later levels winning:
+**Security:** `sanitizeProjectId()` strips `..`, path separators, and unsafe characters to prevent directory traversal.
 
-```
-session frontmatter  <  CLI arguments
-```
-
-**Merge implementation** (`src/lib/flags.ts`):
-
-```typescript
-const sessionFlags = extractFlags(session.frontmatter);
-const effectiveFlags = mergeFlags(sessionFlags, cliFlags);
-```
-
-**Conversion to CLI args** (`flagsToArgs`):
-
-| Input | Output |
-|-------|--------|
-| `{ model: "haiku" }` | `["--model", "haiku"]` |
-| `{ "dangerously-skip-permissions": true }` | `["--dangerously-skip-permissions"]` |
-| `{ "dangerously-skip-permissions": false }` | `[]` (omitted) |
-| `{ allowedTools: ["Bash(git *)", "Read"] }` | `["--allowedTools", "Bash(git *)", "Read"]` |
-
-Boolean `false` means "don't pass this flag" — useful for overriding a session-level `true` from the CLI.
-
-**CLI argument formats** (`parseCliArgs`):
-
-- `--key value` and `--key=value` are both supported.
-- A standalone `--` terminator is ignored by the parser, so users can include it without breaking flag handling.
+**Caching:** Project ID is cached per-process to avoid redundant git calls.
 
 ## Command Data Flow
 
 ### create
 
-1. If session exists with an ID:
-   - **Non-TTY:** Error and exit (backward-compatible for scripts)
-   - **TTY:** Show numbered menu — Refresh / Edit / Delete / Exit
-     - Refresh delegates to the `refresh` command (dynamic import)
-     - Edit opens the session file in `$EDITOR`, then exits with a hint to run `refresh`
-     - Delete removes the session file
-     - Exit aborts
-2. Get prompt content:
-   - **With `-p`:** Use the inline prompt directly, write to session file, skip editor
-   - **Without `-p`:** Write template, open `$EDITOR`, read back, validate non-empty
-3. Generate UUID
-4. Use `cliFlags` directly as effective flags
-5. Spawn: `claude --session-id <uuid> -p <prompt> --output-format json ...flags`
-6. Write frontmatter with UUID + flags
+1. Check user storage for existing ID → show conflict menu if exists
+2. Get prompt (editor or `-p` flag)
+3. Generate UUID, spawn Claude
+4. Write flags to frontmatter, metadata to user storage
 
-### fork
+### fork / use
 
-1. Read session, extract UUID + flags
-2. Merge: `sessionFlags + cliFlags`
-3. Spawn: `claude --resume <uuid> --fork-session ...flags`
-
-Fork creates a new working session branched from the base. The base session UUID is unchanged.
-
-### use
-
-1. Read session, extract UUID + flags
-2. Merge: `sessionFlags + cliFlags`
-3. Spawn: `claude --resume <uuid> ...flags`
-
-Unlike fork, this resumes the base session directly. Context accumulates in the same UUID. Future forks inherit the accumulated context.
+1. Read flags from frontmatter, UUID from user storage
+2. Check `promptHash` → warn if stale
+3. Merge flags (session < CLI)
+4. Spawn Claude with `--resume` (+ `--fork-session` for fork)
 
 ### refresh
 
-1. Read session content + flags
-2. Generate **new** UUID
-3. Merge: `sessionFlags + cliFlags`
-4. Spawn with new UUID
-5. Update frontmatter: new `id`, same `created`, new `updated`
-
-Rebuilds context from the original prompt. Use after major codebase changes. Supports CLI flag overrides (e.g., `--model haiku`).
+1. Read prompt + flags from frontmatter
+2. Preserve `created` timestamp from user storage
+3. Generate new UUID, spawn Claude
+4. Update user storage with new ID + promptHash
 
 ### delete
 
-1. Validate and check existence for each name
-   - Invalid names print error, continue to next
-   - Missing sessions: error without `--force`, yellow warning with `--force`
-2. Batch confirm all valid names (skipped with `--force`)
-3. Delete each valid session, print per-session success
-4. Exit 1 only if errors occurred (invalid names or failed deletes)
-
-Accepts variadic `<names...>` — `cc-fork delete a b c` deletes all three. Single-name usage is backward-compatible.
+1. Validate names, check existence
+2. Confirm (unless `--force`)
+3. Delete markdown + user storage
+4. With `--force`: clean user storage even if markdown missing
 
 ## Claude CLI Integration
 
-Four spawn patterns in `src/lib/claude.ts`:
+| Function | Mode | Key Flags |
+|----------|------|-----------|
+| `createBaseSession` | Non-interactive | `--session-id`, `-p`, `--output-format json` |
+| `createBaseSessionInteractive` | Interactive | `--session-id`, positional prompt |
+| `forkSession` | Interactive | `--resume`, `--fork-session` |
+| `resumeSession` | Interactive | `--resume` |
 
-| Function | Flags | stdio | Returns |
-|----------|-------|-------|---------|
-| `createBaseSession` | `--session-id`, `-p`, `--output-format json` | capture stdout/stderr | `ClaudeResponse` |
-| `createBaseSessionInteractive` | `--session-id`, positional prompt | inherit all | void |
-| `forkSession` | `--resume`, `--fork-session` | inherit stdin/stdout, capture stderr | void |
-| `resumeSession` | `--resume` | inherit stdin/stdout, capture stderr | void |
+Interactive functions inherit stdin/stdout but capture stderr for stale session detection.
 
-`createBaseSession` captures JSON output for the session ID and cost. `createBaseSessionInteractive` passes the prompt as a positional argument (not `-p`), which starts Claude Code in interactive mode. The interactive commands (`fork`, `use`) inherit stdin/stdout for full terminal control, but capture stderr to detect stale session errors.
+## Flag System
 
-### Interactive Mode (default)
+**Merge order:** `session frontmatter < CLI arguments`
 
-`create` and `refresh` default to interactive mode, using `createBaseSessionInteractive` which runs `claude --session-id <uuid> "<prompt>"`. This enters Claude Code directly, allowing the user to see output in real-time and continue interacting. The interactive default can be overridden to non-interactive via `interactive: false` in `config.yaml`, which shows a spinner while waiting for Claude to finish.
-
-## Design Decisions
-
-**Gray-matter for storage.** Sessions are primarily prompts (markdown). Frontmatter adds structure without sacrificing readability. Files are git-friendly and editable with any text editor.
-
-**UUID-based identity.** Session names are for humans; UUIDs identify Claude context. Names can change (rename file), but the UUID points to the same conversation history.
-
-**Fork vs. use distinction.** Two evolution patterns:
-- Fork: isolated working sessions (daily use)
-- Use: incremental base session refinement (add context over time)
-
-**Two-level Claude flags.** Session frontmatter stores per-session Claude CLI flags; CLI arguments override them. Project-level Claude defaults belong in Claude Code's own settings (`.claude/settings.json`), not in cc-fork's `config.yaml`. The merge is simple object spread—last write wins.
-
-**Separate cc-fork config.** `config.yaml` configures cc-fork's own behavior (`interactive`, `defaultCommand`), not Claude CLI flags. This avoids duplicating Claude Code's multi-scope settings system. Only known keys are extracted; unknown keys are ignored.
-
-**Fail-fast validation.** All commands validate inputs early and call `process.exit(1)` on errors. No exceptions bubble up. `delete` is an exception: it validates all names first and continues past individual failures to process remaining sessions.
-
-**Interactive conflict resolution.** When `create` detects an existing session, it shows a numbered menu (via `choose()` in `prompt.ts`) instead of erroring. A non-TTY guard preserves the original error-and-exit behavior for scripts.
+**Conversion (`flagsToArgs`):**
+- `{ key: "value" }` → `["--key", "value"]`
+- `{ flag: true }` → `["--flag"]`
+- `{ flag: false }` → `[]` (omitted)
+- `{ arr: ["a", "b"] }` → `["--arr", "a", "b"]`
 
 ## Error Handling
 
-Commands follow this pattern:
+**Pattern:** Validate early, `process.exit(1)` on failure.
 
-```typescript
-try {
-  validateSessionName(name);
-} catch (err) {
-  console.error(chalk.red(err.message));
-  process.exit(1);
-}
-```
+**Resilience:**
+- `listSessions`: Collects errors, doesn't fail on single corrupted file
+- `readUserSession`: Returns `null` on corrupted JSON (with warning)
+- `readProjectConfig`: Returns `{}` on missing file
 
-`listSessions` is resilient—one corrupted file doesn't break the list. Errors are collected and reported separately.
-
-Project config gracefully handles missing file (returns `{}`), but propagates other errors (permissions, parse failures).
-
-### Stale Session Detection
-
-When a user clears their Claude Code sessions (or the session ID becomes invalid for any reason), `fork` and `use` commands detect the "No conversation found" error from the Claude CLI and display a helpful message:
-
-```
-Session 'payments' has a stale session ID. Run 'cc-fork refresh payments' to rebuild.
-No conversation found with session ID: abc-123...
-```
-
-Implementation: `forkSession` and `resumeSession` capture stderr (while inheriting stdin/stdout for interactivity). On non-zero exit, they check for the stale session pattern and throw a `SessionError` with the helpful message and captured stderr attached.
+**Stale session detection:** `forkSession`/`resumeSession` check stderr for "No conversation found" and throw `SessionError` with recovery hint.
 
 ## Testing
 
-Tests are in `tests/` using vitest. Key test files:
+Tests in `tests/` using vitest.
 
-- `tests/lib/flags.test.ts` — Flag parsing, merging, conversion
-- `tests/lib/config.test.ts` — CcForkConfig parsing, unknown key filtering
-- `tests/lib/claude.test.ts` — Claude CLI spawning, stale session detection
-- `tests/commands/fork.test.ts` — Flag passthrough from session frontmatter + CLI
-- `tests/commands/create.test.ts` — Flag storage in frontmatter, inline prompt
+**Mock pattern:** Commands mock `session.ts`, `config.ts`, `user-storage.ts`, `claude.ts`. Flag utilities tested directly.
 
-Mock pattern: Commands are tested by mocking `session.ts`, `config.ts`, and `claude.ts`. The flag utilities are tested directly.
+**Key test files:**
+- `flags.test.ts` — Flag parsing, merging, conversion
+- `config.test.ts` — Config parsing, unknown key filtering
+- `claude.test.ts` — CLI spawning, stale session detection
+- `fork.test.ts`, `create.test.ts` — Command integration

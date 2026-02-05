@@ -1,5 +1,6 @@
 import chalk from "chalk";
 import { listSessions } from "../lib/session.js";
+import { readUserSession } from "../lib/user-storage.js";
 
 export async function list(): Promise<void> {
   const { sessions, errors } = await listSessions();
@@ -32,10 +33,12 @@ export async function list(): Promise<void> {
   );
 
   for (const session of sessions) {
+    // Read session metadata from user storage
+    const userData = await readUserSession(session.name);
     const name = padRight(session.name, 20);
-    const created = padRight(formatDate(session.frontmatter.created), 22);
-    const updated = padRight(formatDate(session.frontmatter.updated), 22);
-    const status = session.frontmatter.id
+    const created = padRight(formatDate(userData?.created), 22);
+    const updated = padRight(formatDate(userData?.updated), 22);
+    const status = userData?.id
       ? chalk.green("ready")
       : chalk.yellow("no session");
 

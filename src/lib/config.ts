@@ -5,7 +5,7 @@ import type { CcForkConfig } from "../types.js";
 
 const CONFIG_DIR_NAME = ".claude/cc-fork";
 const CONFIG_FILE_NAME = "config.yaml";
-const KNOWN_CONFIG_KEYS = new Set(["interactive", "defaultCommand"]);
+const KNOWN_CONFIG_KEYS = new Set(["interactive", "defaultCommand", "projectId"]);
 
 export function getConfigDir(basePath?: string): string {
   return join(basePath ?? process.cwd(), CONFIG_DIR_NAME);

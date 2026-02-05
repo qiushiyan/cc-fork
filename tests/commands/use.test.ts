@@ -12,6 +12,13 @@ vi.mock("../../src/lib/claude.js", () => ({
 
 vi.mock("../../src/lib/config.js", () => ({
   getSessionPath: vi.fn(),
+  readProjectConfig: vi.fn(),
+}));
+
+vi.mock("../../src/lib/user-storage.js", () => ({
+  readUserSession: vi.fn(),
+  computePromptHash: vi.fn(),
+  clearProjectIdCache: vi.fn(),
 }));
 
 vi.mock("chalk", () => ({
@@ -29,7 +36,8 @@ import {
   readSession,
 } from "../../src/lib/session.js";
 import { resumeSession } from "../../src/lib/claude.js";
-import { getSessionPath } from "../../src/lib/config.js";
+import { getSessionPath, readProjectConfig } from "../../src/lib/config.js";
+import { readUserSession, computePromptHash } from "../../src/lib/user-storage.js";
 
 describe("use command", () => {
   const mockExit = vi.spyOn(process, "exit").mockImplementation(() => {
@@ -43,6 +51,8 @@ describe("use command", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(getSessionPath).mockReturnValue(".claude/cc-fork/bad-session.md");
+    vi.mocked(readProjectConfig).mockResolvedValue({});
+    vi.mocked(computePromptHash).mockReturnValue("abc123");
   });
 
   afterEach(() => {
@@ -72,15 +82,16 @@ describe("use command", () => {
     expect(mockExit).toHaveBeenCalledWith(1);
   });
 
-  it("should exit with error if session has no ID", async () => {
+  it("should exit with error if session has no ID in user storage", async () => {
     vi.mocked(validateSessionName).mockImplementation(() => {});
     vi.mocked(sessionExists).mockResolvedValue(true);
     vi.mocked(readSession).mockResolvedValue({
       name: "no-id",
       path: ".claude/cc-fork/no-id.md",
-      frontmatter: { created: "", updated: "" },
+      frontmatter: {},
       content: "test prompt",
     });
+    vi.mocked(readUserSession).mockResolvedValue(null);
 
     await expect(use("no-id")).rejects.toThrow("process.exit called");
 
@@ -110,8 +121,14 @@ describe("use command", () => {
     vi.mocked(readSession).mockResolvedValue({
       name: "my-session",
       path: ".claude/cc-fork/my-session.md",
-      frontmatter: { id: sessionId, created: "", updated: "" },
+      frontmatter: {},
       content: "test prompt",
+    });
+    vi.mocked(readUserSession).mockResolvedValue({
+      id: sessionId,
+      created: "2024-01-01",
+      updated: "2024-01-01",
+      promptHash: "abc123",
     });
     vi.mocked(resumeSession).mockResolvedValue();
 
@@ -133,8 +150,14 @@ describe("use command", () => {
     vi.mocked(readSession).mockResolvedValue({
       name: "my-session",
       path: ".claude/cc-fork/my-session.md",
-      frontmatter: { id: sessionId, created: "", updated: "" },
+      frontmatter: {},
       content: "test prompt",
+    });
+    vi.mocked(readUserSession).mockResolvedValue({
+      id: sessionId,
+      created: "2024-01-01",
+      updated: "2024-01-01",
+      promptHash: "abc123",
     });
     vi.mocked(resumeSession).mockRejectedValue(new Error("Claude CLI failed"));
 

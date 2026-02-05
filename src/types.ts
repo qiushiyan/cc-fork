@@ -28,4 +28,5 @@ export interface ClaudeResponse {
 export interface CcForkConfig {
   interactive?: boolean;
   defaultCommand?: "fork" | "use";
+  projectId?: string;
 }

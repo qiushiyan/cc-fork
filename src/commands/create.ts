@@ -16,6 +16,12 @@ import {
 } from "../lib/claude.js";
 import { askQuestion, openEditor, choose } from "../lib/prompt.js";
 import { getSessionPath } from "../lib/config.js";
+import {
+  writeUserSession,
+  computePromptHash,
+  readUserSession,
+  deleteUserSession,
+} from "../lib/user-storage.js";
 import type { ClaudeFlags } from "../types.js";
 
 export interface CreateOptions {
@@ -59,7 +65,9 @@ export async function create(
       );
       process.exit(1);
     }
-    if (session.frontmatter.id) {
+    // Check user storage for existing session ID
+    const userData = await readUserSession(name);
+    if (userData?.id) {
       if (!process.stdin.isTTY) {
         console.error(
           chalk.red(
@@ -102,6 +110,7 @@ export async function create(
 
       if (action === "delete") {
         await deleteSession(name);
+        await deleteUserSession(name);
         console.log(chalk.green(`Deleted session '${name}'`));
         return;
       }
@@ -168,16 +177,15 @@ export async function create(
     try {
       await createBaseSessionInteractive(uuid, sessionContent, effectiveFlags);
       const duration = ((Date.now() - startTime) / 1000).toFixed(1);
-      await writeSession(
-        name,
-        {
-          id: uuid,
-          created: now,
-          updated: now,
-          ...effectiveFlags,
-        },
-        sessionContent
-      );
+      // Write only flags to frontmatter (no id/timestamps)
+      await writeSession(name, effectiveFlags, sessionContent);
+      // Write session metadata to user storage
+      await writeUserSession(name, {
+        id: uuid,
+        created: now,
+        updated: now,
+        promptHash: computePromptHash(sessionContent),
+      });
       console.log(chalk.green(`\nCreated base session '${name}'`));
       console.log(chalk.dim(`Session ID: ${uuid}`));
       console.log(chalk.dim(`Duration: ${duration}s`));
@@ -194,16 +202,15 @@ export async function create(
         effectiveFlags
       );
       const duration = ((Date.now() - startTime) / 1000).toFixed(1);
-      await writeSession(
-        name,
-        {
-          id: uuid,
-          created: now,
-          updated: now,
-          ...effectiveFlags,
-        },
-        sessionContent
-      );
+      // Write only flags to frontmatter (no id/timestamps)
+      await writeSession(name, effectiveFlags, sessionContent);
+      // Write session metadata to user storage
+      await writeUserSession(name, {
+        id: uuid,
+        created: now,
+        updated: now,
+        promptHash: computePromptHash(sessionContent),
+      });
       spinner.succeed(`Created base session '${name}'`);
       console.log(chalk.dim(`Session ID: ${uuid}`));
       console.log(chalk.dim(`Duration: ${duration}s`));

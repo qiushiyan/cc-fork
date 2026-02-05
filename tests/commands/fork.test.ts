@@ -12,6 +12,13 @@ vi.mock("../../src/lib/claude.js", () => ({
 
 vi.mock("../../src/lib/config.js", () => ({
   getSessionPath: vi.fn(),
+  readProjectConfig: vi.fn(),
+}));
+
+vi.mock("../../src/lib/user-storage.js", () => ({
+  readUserSession: vi.fn(),
+  computePromptHash: vi.fn(),
+  clearProjectIdCache: vi.fn(),
 }));
 
 vi.mock("chalk", () => ({
@@ -29,7 +36,8 @@ import {
   readSession,
 } from "../../src/lib/session.js";
 import { forkSession } from "../../src/lib/claude.js";
-import { getSessionPath } from "../../src/lib/config.js";
+import { getSessionPath, readProjectConfig } from "../../src/lib/config.js";
+import { readUserSession, computePromptHash } from "../../src/lib/user-storage.js";
 
 describe("fork command - flag passthrough", () => {
   const mockExit = vi.spyOn(process, "exit").mockImplementation(() => {
@@ -44,6 +52,8 @@ describe("fork command - flag passthrough", () => {
     vi.mocked(sessionExists).mockResolvedValue(true);
     vi.mocked(forkSession).mockResolvedValue();
     vi.mocked(getSessionPath).mockReturnValue(".claude/cc-fork/test-session.md");
+    vi.mocked(readProjectConfig).mockResolvedValue({});
+    vi.mocked(computePromptHash).mockReturnValue("abc123");
   });
 
   afterEach(() => {
@@ -55,13 +65,16 @@ describe("fork command - flag passthrough", () => {
       name: "test-session",
       path: ".claude/cc-fork/test-session.md",
       frontmatter: {
-        id: "test-uuid",
-        created: "2024-01-01",
-        updated: "2024-01-01",
         model: "haiku",
         "dangerously-skip-permissions": true,
       },
       content: "test prompt",
+    });
+    vi.mocked(readUserSession).mockResolvedValue({
+      id: "test-uuid",
+      created: "2024-01-01",
+      updated: "2024-01-01",
+      promptHash: "abc123",
     });
 
     await fork("test-session", {});
@@ -88,13 +101,16 @@ describe("fork command - flag passthrough", () => {
       name: "test-session",
       path: ".claude/cc-fork/test-session.md",
       frontmatter: {
-        id: "test-uuid",
-        created: "2024-01-01",
-        updated: "2024-01-01",
         model: "haiku",
         "dangerously-skip-permissions": true,
       },
       content: "test prompt",
+    });
+    vi.mocked(readUserSession).mockResolvedValue({
+      id: "test-uuid",
+      created: "2024-01-01",
+      updated: "2024-01-01",
+      promptHash: "abc123",
     });
 
     await fork("test-session", {
@@ -112,12 +128,14 @@ describe("fork command - flag passthrough", () => {
     vi.mocked(readSession).mockResolvedValue({
       name: "test-session",
       path: ".claude/cc-fork/test-session.md",
-      frontmatter: {
-        id: "test-uuid",
-        created: "2024-01-01",
-        updated: "2024-01-01",
-      },
+      frontmatter: {},
       content: "test prompt",
+    });
+    vi.mocked(readUserSession).mockResolvedValue({
+      id: "test-uuid",
+      created: "2024-01-01",
+      updated: "2024-01-01",
+      promptHash: "abc123",
     });
 
     await fork("test-session", {});
@@ -130,12 +148,15 @@ describe("fork command - flag passthrough", () => {
       name: "test-session",
       path: ".claude/cc-fork/test-session.md",
       frontmatter: {
-        id: "test-uuid",
-        created: "2024-01-01",
-        updated: "2024-01-01",
         allowedTools: ["Bash(git *)", "Read", "Edit"],
       },
       content: "test prompt",
+    });
+    vi.mocked(readUserSession).mockResolvedValue({
+      id: "test-uuid",
+      created: "2024-01-01",
+      updated: "2024-01-01",
+      promptHash: "abc123",
     });
 
     await fork("test-session", {});

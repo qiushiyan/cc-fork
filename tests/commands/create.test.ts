@@ -16,11 +16,20 @@ vi.mock("../../src/lib/claude.js", () => ({
 vi.mock("../../src/lib/config.js", () => ({
   ensureConfigDir: vi.fn(),
   getSessionPath: vi.fn(),
+  readProjectConfig: vi.fn(),
 }));
 
 vi.mock("../../src/lib/prompt.js", () => ({
   askQuestion: vi.fn(),
   openEditor: vi.fn(),
+}));
+
+vi.mock("../../src/lib/user-storage.js", () => ({
+  writeUserSession: vi.fn(),
+  readUserSession: vi.fn(),
+  deleteUserSession: vi.fn(),
+  computePromptHash: vi.fn(),
+  clearProjectIdCache: vi.fn(),
 }));
 
 vi.mock("chalk", () => ({
@@ -45,8 +54,14 @@ import {
 import {
   ensureConfigDir,
   getSessionPath,
+  readProjectConfig,
 } from "../../src/lib/config.js";
 import { openEditor } from "../../src/lib/prompt.js";
+import {
+  writeUserSession,
+  readUserSession,
+  computePromptHash,
+} from "../../src/lib/user-storage.js";
 
 describe("create command - flag passthrough", () => {
   vi.spyOn(process, "exit").mockImplementation(() => {
@@ -75,6 +90,10 @@ describe("create command - flag passthrough", () => {
       result: "Session created",
     });
     vi.mocked(createBaseSessionInteractive).mockResolvedValue();
+    vi.mocked(readProjectConfig).mockResolvedValue({});
+    vi.mocked(writeUserSession).mockResolvedValue();
+    vi.mocked(readUserSession).mockResolvedValue(null);
+    vi.mocked(computePromptHash).mockReturnValue("abc123");
   });
 
   afterEach(() => {
@@ -103,12 +122,13 @@ describe("create command - flag passthrough", () => {
       "dangerously-skip-permissions": true,
     });
 
+    // Only flags are stored in frontmatter (no id/timestamps)
     expect(writeSession).toHaveBeenCalledWith(
       "test-session",
-      expect.objectContaining({
+      {
         model: "haiku",
         "dangerously-skip-permissions": true,
-      }),
+      },
       "test prompt content"
     );
   });
@@ -128,18 +148,18 @@ describe("create command - flag passthrough", () => {
     );
   });
 
-  it("stores reserved fields correctly alongside flags", async () => {
+  it("stores session metadata in user storage", async () => {
     await create("test-session", { model: "haiku" });
 
-    expect(writeSession).toHaveBeenCalledWith(
+    // Session metadata (id, created, updated, promptHash) goes to user storage
+    expect(writeUserSession).toHaveBeenCalledWith(
       "test-session",
       expect.objectContaining({
         id: expect.any(String),
         created: expect.any(String),
         updated: expect.any(String),
-        model: "haiku",
-      }),
-      "test prompt content"
+        promptHash: expect.any(String),
+      })
     );
   });
 
