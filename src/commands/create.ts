@@ -27,6 +27,7 @@ import type { ClaudeFlags } from "../types.js";
 export interface CreateOptions {
   interactive?: boolean;
   prompt?: string;
+  noEval?: boolean;
 }
 
 export async function create(
@@ -162,6 +163,16 @@ export async function create(
       process.exit(1);
     }
     sessionContent = session.content;
+  }
+
+  if (options.noEval) {
+    console.log(chalk.green(`Created session file '${name}'`));
+    console.log(
+      chalk.dim(
+        `Run 'cc-fork refresh ${name}' to evaluate the prompt and start a session.`
+      )
+    );
+    return;
   }
 
   const uuid = randomUUID();

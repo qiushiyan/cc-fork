@@ -89,8 +89,9 @@ Priority order in `getProjectId()`:
 
 1. Check user storage for existing ID → show conflict menu if exists
 2. Get prompt (editor or `-p` flag)
-3. Generate UUID, spawn Claude
-4. Write flags to frontmatter, metadata to user storage
+3. If `--no-eval`: write session file and return (no UUID, no Claude, no user storage)
+4. Generate UUID, spawn Claude
+5. Write flags to frontmatter, metadata to user storage
 
 ### fork / use
 

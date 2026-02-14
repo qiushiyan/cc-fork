@@ -183,4 +183,41 @@ describe("create command - flag passthrough", () => {
     );
     expect(createBaseSessionInteractive).not.toHaveBeenCalled();
   });
+
+  describe("--no-eval flag", () => {
+    it("writes session file but does not call Claude", async () => {
+      await create("test-session", {}, { noEval: true });
+
+      expect(writeSession).toHaveBeenCalled();
+      expect(createBaseSession).not.toHaveBeenCalled();
+      expect(createBaseSessionInteractive).not.toHaveBeenCalled();
+    });
+
+    it("does not write user session metadata", async () => {
+      await create("test-session", {}, { noEval: true });
+
+      expect(writeUserSession).not.toHaveBeenCalled();
+    });
+
+    it("prints help message about running refresh", async () => {
+      const mockLog = vi.spyOn(console, "log");
+      await create("test-session", {}, { noEval: true });
+
+      expect(mockLog).toHaveBeenCalledWith(
+        expect.stringContaining("Created session file")
+      );
+      expect(mockLog).toHaveBeenCalledWith(
+        expect.stringContaining("cc-fork refresh test-session")
+      );
+    });
+
+    it("works with inline prompt via -p flag", async () => {
+      await create("test-session", {}, { noEval: true, prompt: "my prompt" });
+
+      expect(writeSession).toHaveBeenCalledWith("test-session", {}, "my prompt");
+      expect(createBaseSession).not.toHaveBeenCalled();
+      expect(createBaseSessionInteractive).not.toHaveBeenCalled();
+      expect(writeUserSession).not.toHaveBeenCalled();
+    });
+  });
 });

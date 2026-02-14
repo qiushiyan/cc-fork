@@ -64,6 +64,14 @@ cc-fork use payments       # Resume base session, add more context
 cc-fork payments           # Future forks include the new context
 ```
 
+### Scaffold First, Evaluate Later
+
+```bash
+cc-fork create payments --no-eval   # Create the file without calling Claude
+# Edit the prompt at your leisure...
+cc-fork refresh payments            # Evaluate when ready
+```
+
 ### Maintenance: Keep Sessions Fresh
 
 ```bash
@@ -104,6 +112,7 @@ Commit these files to share prompts with your team. Session state (IDs, timestam
 **create:**
 - `-p, --prompt <text>` — Provide prompt inline, skip editor
 - `-i, --interactive` — Enter Claude Code after prompt (default: true)
+- `--no-eval` — Create session file without evaluating the prompt
 
 **refresh:**
 - `-i, --interactive` — Enter Claude Code after prompt (default: true)

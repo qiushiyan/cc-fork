@@ -46,12 +46,13 @@ async function main() {
     .description("Create a new base session")
     .option("-i, --interactive", "Enter Claude Code after sending prompt")
     .option("-p, --prompt <text>", "Provide prompt inline (skip editor)")
+    .option("--no-eval", "Create session file without evaluating the prompt")
     .allowUnknownOption()
     .allowExcessArguments()
     .action(
       (
         name: string | undefined,
-        options: { interactive?: boolean; prompt?: string },
+        options: { interactive?: boolean; prompt?: string; eval?: boolean },
         command: Command
       ) => {
         const rawArgs = command.args.slice(name ? 1 : 0);
@@ -59,6 +60,7 @@ async function main() {
         return create(name, cliFlags, {
           interactive: options.interactive ?? config.interactive,
           prompt: options.prompt,
+          noEval: options.eval === false,
         });
       }
     );
