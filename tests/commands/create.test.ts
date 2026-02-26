@@ -163,6 +163,57 @@ describe("create command - flag passthrough", () => {
     );
   });
 
+  it("writes session file with flags before invoking Claude", async () => {
+    const callOrder: string[] = [];
+    vi.mocked(writeSession).mockImplementation(async () => {
+      callOrder.push("writeSession");
+    });
+    vi.mocked(createBaseSessionInteractive).mockImplementation(async () => {
+      callOrder.push("createBaseSessionInteractive");
+    });
+
+    await create("test-session", { model: "haiku" });
+
+    // At least one write must happen before Claude starts.
+    const claudeIndex = callOrder.indexOf("createBaseSessionInteractive");
+    const firstWriteIndex = callOrder.indexOf("writeSession");
+    expect(firstWriteIndex).toBeGreaterThanOrEqual(0);
+    expect(claudeIndex).toBeGreaterThan(firstWriteIndex);
+  });
+
+  it("does not write session file after Claude finishes", async () => {
+    const callOrder: string[] = [];
+    vi.mocked(writeSession).mockImplementation(async () => {
+      callOrder.push("writeSession");
+    });
+    vi.mocked(createBaseSessionInteractive).mockImplementation(async () => {
+      callOrder.push("claude");
+    });
+
+    await create("test-session", { model: "haiku" });
+
+    // After Claude runs, only user storage should be written — not the session file.
+    const claudeIndex = callOrder.indexOf("claude");
+    const writesAfterClaude = callOrder.slice(claudeIndex + 1);
+    expect(writesAfterClaude).not.toContain("writeSession");
+  });
+
+  it("exits with a clear error if pre-Claude write fails", async () => {
+    vi.mocked(writeSession)
+      .mockResolvedValueOnce() // Initial inline prompt scaffold write
+      .mockRejectedValueOnce(new Error("EACCES"));
+
+    await expect(
+      create("test-session", { model: "haiku" }, { prompt: "inline prompt" })
+    ).rejects.toThrow("process.exit called");
+
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining("Failed to update session file 'test-session'")
+    );
+    expect(createBaseSessionInteractive).not.toHaveBeenCalled();
+    expect(createBaseSession).not.toHaveBeenCalled();
+  });
+
   it("uses inline prompt when -p is provided", async () => {
     await create("test-session", {}, { prompt: "inline prompt text" });
 

@@ -179,6 +179,19 @@ export async function create(
   const effectiveFlags = cliFlags;
   const now = new Date().toISOString();
 
+  // Write flags to frontmatter before invoking Claude, so edits during
+  // the interactive session are not overwritten by a stale snapshot.
+  try {
+    await writeSession(name, effectiveFlags, sessionContent);
+  } catch (err) {
+    console.error(
+      chalk.red(
+        `Failed to update session file '${name}'. Check file permissions and path: ${sessionPath}`
+      )
+    );
+    process.exit(1);
+  }
+
   const startTime = Date.now();
 
   const interactive = options.interactive ?? true;
@@ -188,8 +201,6 @@ export async function create(
     try {
       await createBaseSessionInteractive(uuid, sessionContent, effectiveFlags);
       const duration = ((Date.now() - startTime) / 1000).toFixed(1);
-      // Write only flags to frontmatter (no id/timestamps)
-      await writeSession(name, effectiveFlags, sessionContent);
       // Write session metadata to user storage
       await writeUserSession(name, {
         id: uuid,
@@ -213,8 +224,6 @@ export async function create(
         effectiveFlags
       );
       const duration = ((Date.now() - startTime) / 1000).toFixed(1);
-      // Write only flags to frontmatter (no id/timestamps)
-      await writeSession(name, effectiveFlags, sessionContent);
       // Write session metadata to user storage
       await writeUserSession(name, {
         id: uuid,

@@ -3,7 +3,6 @@ import ora from "ora";
 import { randomUUID } from "node:crypto";
 import {
   readSession,
-  writeSession,
   sessionExists,
   validateSessionName,
 } from "../lib/session.js";
@@ -81,8 +80,6 @@ export async function refresh(
     try {
       await createBaseSessionInteractive(uuid, session.content, effectiveFlags);
       const duration = ((Date.now() - startTime) / 1000).toFixed(1);
-      // Write only flags to frontmatter (no id/timestamps)
-      await writeSession(name, sessionFlags, session.content);
       // Write session metadata to user storage
       await writeUserSession(name, {
         id: uuid,
@@ -106,8 +103,6 @@ export async function refresh(
         effectiveFlags
       );
       const duration = ((Date.now() - startTime) / 1000).toFixed(1);
-      // Write only flags to frontmatter (no id/timestamps)
-      await writeSession(name, sessionFlags, session.content);
       // Write session metadata to user storage
       await writeUserSession(name, {
         id: uuid,
