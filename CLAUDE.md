@@ -22,7 +22,7 @@ Package manager is **pnpm** (10.27.0). No linter or formatter is configured.
 CLI tool (`cc-fork`) that manages Claude Code kickstart sessions — reusable markdown prompts with Claude CLI flags stored as YAML frontmatter.
 
 **Two-tier storage model:**
-- **Prompt files** (committed): `.claude/cc-fork/<name>.md` — markdown with YAML frontmatter containing Claude CLI flags and prompt content. Parsed with `gray-matter`.
+- **Prompt files** (committed): `.cc-fork/<name>.md` — markdown with YAML frontmatter containing Claude CLI flags and prompt content. Parsed with `gray-matter`.
 - **User session data** (not committed): `~/.cc-fork/<project-id>/<name>.json` — session IDs, timestamps, and prompt hash for staleness detection. Project ID derived from: config `projectId` > git remote origin > cwd path hash.
 
 **Session file format:**
@@ -45,7 +45,7 @@ Frontmatter keys `id`, `created`, `updated` are reserved (`RESERVED_KEYS` in `ty
 - `src/lib/session.ts` — Markdown/frontmatter I/O with `gray-matter`
 - `src/lib/user-storage.ts` — User-level session metadata at `~/.cc-fork/`, with project ID caching and path sanitization
 - `src/lib/claude.ts` — Spawns `claude` CLI via `child_process.spawn`
-- `src/lib/config.ts` — Path helpers for `.claude/cc-fork/` and project config parsing
+- `src/lib/config.ts` — Path helpers for `.cc-fork/` and project config parsing; legacy migration from `.claude/cc-fork/`
 - `src/lib/git.ts` — Git remote origin detection and URL normalization
 - `src/lib/prompt.ts` — Readline-based interactive prompts and editor launching
 

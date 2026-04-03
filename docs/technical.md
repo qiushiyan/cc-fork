@@ -14,7 +14,7 @@ Libraries (src/lib/*.ts)
     ├── user-storage.ts → user-level session metadata
     ├── git.ts          → git remote detection
     ├── flags.ts        → parse/merge/convert flags
-    ├── config.ts       → paths + project config
+    ├── config.ts       → paths + project config + legacy migration
     ├── claude.ts       → spawn claude CLI
     └── prompt.ts       → editor/readline/choose menu
 ```
@@ -43,7 +43,7 @@ src/
 
 ## Storage Model
 
-### Prompt Files (`.claude/cc-fork/*.md`)
+### Prompt Files (`.cc-fork/*.md`)
 
 Markdown with YAML frontmatter. Contains only Claude CLI flags—no session state.
 
@@ -82,6 +82,10 @@ Priority order in `getProjectId()`:
 **Security:** `sanitizeProjectId()` strips `..`, path separators, and unsafe characters to prevent directory traversal.
 
 **Caching:** Project ID is cached per-process to avoid redundant git calls.
+
+### Legacy Migration
+
+On every CLI invocation, `checkLegacyConfigDir()` runs before command dispatch (skipped for `--help`/`--version`). If `.claude/cc-fork/` exists (the pre-v0.4 path), the user is prompted to move it to `.cc-fork/`. If both directories exist, the CLI errors out and asks the user to resolve manually.
 
 ## Command Data Flow
 
