@@ -4,9 +4,8 @@ import matter from "gray-matter";
 import type { CcForkConfig } from "../types.js";
 import { confirm } from "./prompt.js";
 
-const CONFIG_DIR_NAME = ".claude/cc-fork";
+const CONFIG_DIR_NAME = ".cc-fork";
 const LEGACY_CONFIG_DIR_NAME = ".claude/cc-fork";
-const NEW_CONFIG_DIR_NAME = ".cc-fork";
 const CONFIG_FILE_NAME = "config.yaml";
 const KNOWN_CONFIG_KEYS = new Set(["interactive", "defaultCommand", "projectId"]);
 
@@ -23,7 +22,7 @@ async function dirExists(path: string): Promise<boolean> {
 export async function checkLegacyConfigDir(basePath?: string): Promise<void> {
   const base = basePath ?? process.cwd();
   const legacyDir = join(base, LEGACY_CONFIG_DIR_NAME);
-  const newDir = join(base, NEW_CONFIG_DIR_NAME);
+  const newDir = join(base, CONFIG_DIR_NAME);
 
   const [legacyExists, newExists] = await Promise.all([
     dirExists(legacyDir),
@@ -34,13 +33,13 @@ export async function checkLegacyConfigDir(basePath?: string): Promise<void> {
 
   if (legacyExists && newExists) {
     console.error(
-      `Both '${LEGACY_CONFIG_DIR_NAME}/' and '${NEW_CONFIG_DIR_NAME}/' exist. Please resolve manually.`
+      `Both '${LEGACY_CONFIG_DIR_NAME}/' and '${CONFIG_DIR_NAME}/' exist. Please resolve manually.`
     );
     process.exit(1);
   }
 
   console.log(
-    `Detected legacy config directory at '${LEGACY_CONFIG_DIR_NAME}/'. cc-fork now uses '${NEW_CONFIG_DIR_NAME}/' at the project root.`
+    `Detected legacy config directory at '${LEGACY_CONFIG_DIR_NAME}/'. cc-fork now uses '${CONFIG_DIR_NAME}/' at the project root.`
   );
 
   const accepted = await confirm("Move configuration to '.cc-fork/'?");

@@ -9,7 +9,7 @@ import { list } from "./commands/list.js";
 import { del } from "./commands/delete.js";
 import { edit } from "./commands/edit.js";
 import { parseCliArgs } from "./lib/flags.js";
-import { readProjectConfig } from "./lib/config.js";
+import { readProjectConfig, checkLegacyConfigDir } from "./lib/config.js";
 
 const knownCommands = new Set([
   "create",
@@ -25,11 +25,24 @@ const knownCommands = new Set([
 ]);
 
 async function main() {
+  const args = process.argv.slice(2);
+
+  // Skip migration check for informational flags
+  const isInfoOnly =
+    args.includes("--help") ||
+    args.includes("-h") ||
+    args.includes("--version") ||
+    args.includes("-v") ||
+    args.includes("help");
+
+  if (!isInfoOnly) {
+    await checkLegacyConfigDir();
+  }
+
   const config = await readProjectConfig();
   const defaultCmd = config.defaultCommand || "fork";
 
   // Default to configured command if first arg isn't a known command
-  const args = process.argv.slice(2);
   const firstArg = args[0];
   if (firstArg && !firstArg.startsWith("-") && !knownCommands.has(firstArg)) {
     process.argv.splice(2, 0, defaultCmd);
