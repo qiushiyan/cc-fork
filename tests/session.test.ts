@@ -77,7 +77,7 @@ describe("readSession", () => {
 
   beforeEach(async () => {
     testDir = await createTestDir();
-    configDir = join(testDir, ".claude", "cc-fork");
+    configDir = join(testDir, ".cc-fork");
     await mkdir(configDir, { recursive: true });
   });
 
@@ -137,7 +137,7 @@ describe("writeSession", () => {
 
   beforeEach(async () => {
     testDir = await createTestDir();
-    configDir = join(testDir, ".claude", "cc-fork");
+    configDir = join(testDir, ".cc-fork");
     await mkdir(configDir, { recursive: true });
   });
 
@@ -215,7 +215,7 @@ describe("listSessions", () => {
 
   beforeEach(async () => {
     testDir = await createTestDir();
-    configDir = join(testDir, ".claude", "cc-fork");
+    configDir = join(testDir, ".cc-fork");
     await mkdir(configDir, { recursive: true });
   });
 
@@ -295,7 +295,7 @@ describe("sessionExists", () => {
 
   beforeEach(async () => {
     testDir = await createTestDir();
-    configDir = join(testDir, ".claude", "cc-fork");
+    configDir = join(testDir, ".cc-fork");
     await mkdir(configDir, { recursive: true });
   });
 
@@ -337,7 +337,7 @@ describe("deleteSession", () => {
 
   beforeEach(async () => {
     testDir = await createTestDir();
-    configDir = join(testDir, ".claude", "cc-fork");
+    configDir = join(testDir, ".cc-fork");
     await mkdir(configDir, { recursive: true });
   });
 

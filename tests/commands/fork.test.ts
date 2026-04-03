@@ -51,7 +51,7 @@ describe("fork command - flag passthrough", () => {
     vi.mocked(validateSessionName).mockImplementation(() => {});
     vi.mocked(sessionExists).mockResolvedValue(true);
     vi.mocked(forkSession).mockResolvedValue();
-    vi.mocked(getSessionPath).mockReturnValue(".claude/cc-fork/test-session.md");
+    vi.mocked(getSessionPath).mockReturnValue(".cc-fork/test-session.md");
     vi.mocked(readProjectConfig).mockResolvedValue({});
     vi.mocked(computePromptHash).mockReturnValue("abc123");
   });
@@ -63,7 +63,7 @@ describe("fork command - flag passthrough", () => {
   it("passes flags from session frontmatter to claude", async () => {
     vi.mocked(readSession).mockResolvedValue({
       name: "test-session",
-      path: ".claude/cc-fork/test-session.md",
+      path: ".cc-fork/test-session.md",
       frontmatter: {
         model: "haiku",
         "dangerously-skip-permissions": true,
@@ -99,7 +99,7 @@ describe("fork command - flag passthrough", () => {
   it("CLI flags override session frontmatter", async () => {
     vi.mocked(readSession).mockResolvedValue({
       name: "test-session",
-      path: ".claude/cc-fork/test-session.md",
+      path: ".cc-fork/test-session.md",
       frontmatter: {
         model: "haiku",
         "dangerously-skip-permissions": true,
@@ -127,7 +127,7 @@ describe("fork command - flag passthrough", () => {
   it("handles empty flags at all levels", async () => {
     vi.mocked(readSession).mockResolvedValue({
       name: "test-session",
-      path: ".claude/cc-fork/test-session.md",
+      path: ".cc-fork/test-session.md",
       frontmatter: {},
       content: "test prompt",
     });
@@ -146,7 +146,7 @@ describe("fork command - flag passthrough", () => {
   it("passes array flags from frontmatter", async () => {
     vi.mocked(readSession).mockResolvedValue({
       name: "test-session",
-      path: ".claude/cc-fork/test-session.md",
+      path: ".cc-fork/test-session.md",
       frontmatter: {
         allowedTools: ["Bash(git *)", "Read", "Edit"],
       },

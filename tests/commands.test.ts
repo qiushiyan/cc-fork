@@ -29,7 +29,7 @@ describe("list command", () => {
     });
 
     it("should return sessions sorted by name with valid session files", async () => {
-      const configDir = `${testDir}/.claude/cc-fork`;
+      const configDir = `${testDir}/.cc-fork`;
 
       await createMockSessionFile(configDir, "alpha-session", "Alpha content", {
         id: "session-1",
@@ -61,7 +61,7 @@ describe("list command", () => {
     });
 
     it("should return session without id when frontmatter is incomplete", async () => {
-      const configDir = `${testDir}/.claude/cc-fork`;
+      const configDir = `${testDir}/.cc-fork`;
 
       await createMockSessionFile(configDir, "no-id-session", "Content without ID", {
         created: "2024-01-01T10:00:00Z",
@@ -84,7 +84,7 @@ describe("list command", () => {
     });
 
     it("should ignore non-markdown files", async () => {
-      const configDir = `${testDir}/.claude/cc-fork`;
+      const configDir = `${testDir}/.cc-fork`;
       const { writeFile } = await import("node:fs/promises");
 
       await createMockSessionFile(configDir, "valid-session", "Valid content", {
@@ -146,7 +146,7 @@ describe("delete command", () => {
 
   describe("sessionExists", () => {
     it("should return true when session file exists", async () => {
-      const configDir = `${testDir}/.claude/cc-fork`;
+      const configDir = `${testDir}/.cc-fork`;
 
       await createMockSessionFile(configDir, "existing-session", "Content", {
         id: "session-1",
@@ -166,7 +166,7 @@ describe("delete command", () => {
 
   describe("deleteSession", () => {
     it("should delete an existing session file", async () => {
-      const configDir = `${testDir}/.claude/cc-fork`;
+      const configDir = `${testDir}/.cc-fork`;
 
       await createMockSessionFile(configDir, "to-delete", "Content to delete", {
         id: "session-1",
@@ -184,7 +184,7 @@ describe("delete command", () => {
     });
 
     it("should only delete the specified session", async () => {
-      const configDir = `${testDir}/.claude/cc-fork`;
+      const configDir = `${testDir}/.cc-fork`;
 
       await createMockSessionFile(configDir, "keep-this", "Keep this content", {
         id: "session-1",
@@ -216,7 +216,7 @@ describe("command output formatting", () => {
 
   describe("list command output data", () => {
     it("should provide session data suitable for table display", async () => {
-      const configDir = `${testDir}/.claude/cc-fork`;
+      const configDir = `${testDir}/.cc-fork`;
 
       await createMockSessionFile(configDir, "my-project", "Project notes", {
         id: "abc123",
@@ -236,7 +236,7 @@ describe("command output formatting", () => {
     });
 
     it("should indicate ready status when session has id", async () => {
-      const configDir = `${testDir}/.claude/cc-fork`;
+      const configDir = `${testDir}/.cc-fork`;
 
       await createMockSessionFile(configDir, "ready-session", "Content", {
         id: "session-id",
@@ -250,7 +250,7 @@ describe("command output formatting", () => {
     });
 
     it("should indicate no-session status when session lacks id", async () => {
-      const configDir = `${testDir}/.claude/cc-fork`;
+      const configDir = `${testDir}/.cc-fork`;
 
       await createMockSessionFile(configDir, "not-ready-session", "Content", {
         created: "2024-06-15T09:30:00Z",

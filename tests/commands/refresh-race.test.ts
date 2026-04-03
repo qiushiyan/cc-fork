@@ -53,7 +53,7 @@ describe("refresh command - race safety", () => {
     process.chdir(testDir);
 
     await ensureConfigDir(testDir);
-    sessionPath = join(testDir, ".claude", "cc-fork", "base.md");
+    sessionPath = join(testDir, ".cc-fork", "base.md");
     await writeSession("base", { model: "haiku" }, "Initial prompt", testDir);
 
     claudeStarted = new Promise<void>((resolve) => {

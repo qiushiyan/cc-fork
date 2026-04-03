@@ -74,14 +74,14 @@ describe("create command - flag passthrough", () => {
     vi.clearAllMocks();
     vi.mocked(validateSessionName).mockImplementation(() => {});
     vi.mocked(sessionExists).mockResolvedValue(false);
-    vi.mocked(ensureConfigDir).mockResolvedValue("/test/.claude/cc-fork");
-    vi.mocked(getSessionPath).mockReturnValue("/test/.claude/cc-fork/test.md");
+    vi.mocked(ensureConfigDir).mockResolvedValue("/test/.cc-fork");
+    vi.mocked(getSessionPath).mockReturnValue("/test/.cc-fork/test.md");
     vi.mocked(getDefaultTemplate).mockReturnValue("default template");
     vi.mocked(writeSession).mockResolvedValue();
     vi.mocked(openEditor).mockResolvedValue();
     vi.mocked(readSession).mockResolvedValue({
       name: "test-session",
-      path: "/test/.claude/cc-fork/test.md",
+      path: "/test/.cc-fork/test.md",
       frontmatter: {},
       content: "test prompt content",
     });

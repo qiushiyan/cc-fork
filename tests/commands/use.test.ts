@@ -50,7 +50,7 @@ describe("use command", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(getSessionPath).mockReturnValue(".claude/cc-fork/bad-session.md");
+    vi.mocked(getSessionPath).mockReturnValue(".cc-fork/bad-session.md");
     vi.mocked(readProjectConfig).mockResolvedValue({});
     vi.mocked(computePromptHash).mockReturnValue("abc123");
   });
@@ -87,7 +87,7 @@ describe("use command", () => {
     vi.mocked(sessionExists).mockResolvedValue(true);
     vi.mocked(readSession).mockResolvedValue({
       name: "no-id",
-      path: ".claude/cc-fork/no-id.md",
+      path: ".cc-fork/no-id.md",
       frontmatter: {},
       content: "test prompt",
     });
@@ -120,7 +120,7 @@ describe("use command", () => {
     vi.mocked(sessionExists).mockResolvedValue(true);
     vi.mocked(readSession).mockResolvedValue({
       name: "my-session",
-      path: ".claude/cc-fork/my-session.md",
+      path: ".cc-fork/my-session.md",
       frontmatter: {},
       content: "test prompt",
     });
@@ -149,7 +149,7 @@ describe("use command", () => {
     vi.mocked(sessionExists).mockResolvedValue(true);
     vi.mocked(readSession).mockResolvedValue({
       name: "my-session",
-      path: ".claude/cc-fork/my-session.md",
+      path: ".cc-fork/my-session.md",
       frontmatter: {},
       content: "test prompt",
     });

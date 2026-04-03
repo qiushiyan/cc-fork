@@ -62,7 +62,7 @@ describe("refresh command", () => {
     vi.clearAllMocks();
     vi.mocked(validateSessionName).mockImplementation(() => {});
     vi.mocked(sessionExists).mockResolvedValue(true);
-    vi.mocked(getSessionPath).mockReturnValue(".claude/cc-fork/test-session.md");
+    vi.mocked(getSessionPath).mockReturnValue(".cc-fork/test-session.md");
     vi.mocked(readProjectConfig).mockResolvedValue({});
     vi.mocked(computePromptHash).mockReturnValue("newhash123");
     vi.mocked(createBaseSessionInteractive).mockResolvedValue();
@@ -73,7 +73,7 @@ describe("refresh command", () => {
     vi.mocked(writeUserSession).mockResolvedValue();
     vi.mocked(readSession).mockResolvedValue({
       name: "test-session",
-      path: ".claude/cc-fork/test-session.md",
+      path: ".cc-fork/test-session.md",
       frontmatter: { model: "haiku" },
       content: "# Updated prompt\n\nUser edited this manually.",
     });
