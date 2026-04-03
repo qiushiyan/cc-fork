@@ -16,6 +16,8 @@ export async function askQuestion(question: string): Promise<string> {
 }
 
 export async function confirm(message: string): Promise<boolean> {
+  if (!process.stdin.isTTY) return false;
+
   const answer = await askQuestion(`${message} (y/N): `);
   return answer.toLowerCase() === "y" || answer.toLowerCase() === "yes";
 }
