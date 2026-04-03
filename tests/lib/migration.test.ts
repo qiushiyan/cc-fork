@@ -76,6 +76,30 @@ describe("checkLegacyConfigDir", () => {
     mockExit.mockRestore();
   });
 
+  it("auto-migrates when CC_FORK_MIGRATE=1 without prompting", async () => {
+    const legacyDir = join(testDir, ".claude", "cc-fork");
+    await mkdir(legacyDir, { recursive: true });
+    await writeFile(join(legacyDir, "test.md"), "content");
+
+    const originalEnv = process.env.CC_FORK_MIGRATE;
+    process.env.CC_FORK_MIGRATE = "1";
+
+    try {
+      await checkLegacyConfigDir(testDir);
+
+      expect(confirm).not.toHaveBeenCalled();
+      const newFile = join(testDir, ".cc-fork", "test.md");
+      await expect(stat(newFile)).resolves.toBeDefined();
+      await expect(stat(legacyDir)).rejects.toThrow();
+    } finally {
+      if (originalEnv === undefined) {
+        delete process.env.CC_FORK_MIGRATE;
+      } else {
+        process.env.CC_FORK_MIGRATE = originalEnv;
+      }
+    }
+  });
+
   it("errors when both directories exist", async () => {
     await mkdir(join(testDir, ".claude", "cc-fork"), { recursive: true });
     await mkdir(join(testDir, ".cc-fork"), { recursive: true });

@@ -42,11 +42,13 @@ export async function checkLegacyConfigDir(basePath?: string): Promise<void> {
     `Detected legacy config directory at '${LEGACY_CONFIG_DIR_NAME}/'. cc-fork now uses '${CONFIG_DIR_NAME}/' at the project root.`
   );
 
-  const accepted = await confirm("Move configuration to '.cc-fork/'?");
+  const accepted =
+    process.env.CC_FORK_MIGRATE === "1" ||
+    (await confirm("Move configuration to '.cc-fork/'?"));
 
   if (!accepted) {
     console.log(
-      "Migration declined. cc-fork requires '.cc-fork/' at the project root. Move the directory manually or re-run to accept."
+      "Migration declined. cc-fork requires '.cc-fork/' at the project root.\nSet CC_FORK_MIGRATE=1 to migrate non-interactively, or re-run to accept."
     );
     process.exit(1);
   }
@@ -56,6 +58,8 @@ export async function checkLegacyConfigDir(basePath?: string): Promise<void> {
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === "EXDEV") {
       const tmpDir = join(base, ".cc-fork.tmp");
+      // Clean up any stale temp from a prior interrupted migration
+      await rm(tmpDir, { recursive: true, force: true });
       await cp(legacyDir, tmpDir, { recursive: true });
       await rename(tmpDir, newDir);
       await rm(legacyDir, { recursive: true, force: true });
